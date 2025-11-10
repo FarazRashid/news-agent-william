@@ -136,3 +136,62 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Utility classes for responsive improvements */
+@layer utilities {
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Custom container with proper padding */
+  .container-safe {
+    @apply mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Responsive text truncation */
+  .truncate-mobile {
+    @apply line-clamp-2 sm:line-clamp-3;
+  }
+
+  /* Touch-friendly tap targets (min 44x44px) */
+  .tap-target {
+    @apply min-w-[44px] min-h-[44px] flex items-center justify-center;
+  }
+
+  /* Smooth scrolling for filter sections */
+  .smooth-scroll {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Responsive aspect ratios */
+  .aspect-video-mobile {
+    @apply aspect-video sm:aspect-[4/3];
+  }
+}
+
+/* Container queries for card-based layouts */
+@container (min-width: 400px) {
+  .card-responsive {
+    @apply flex-row;
+  }
+}
+
+/* Performance optimizations */
+@layer base {
+  /* GPU acceleration for animations */
+  .will-change-transform {
+    will-change: transform;
+  }
+
+  /* Optimize rendering for images */
+  img {
+    @apply will-change-auto;
+  }
+}
+

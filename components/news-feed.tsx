@@ -1,10 +1,15 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { ChevronDown } from "lucide-react"
+import { ChevronDown, ArrowUpDown } from "lucide-react"
 import { useNews } from "@/lib/news-context"
 import NewsArticle from "./news-article"
 import NewsFeedSkeleton from "./news-feed-skeleton"
+import { ArticleListSkeleton } from "./article-card-skeleton"
+import { ActiveFiltersChips } from "./active-filters-chips"
+import { MobileFilterSheet } from "./mobile-filter-sheet"
+import { SortDropdown } from "./sort-dropdown"
+import { Button } from "./ui/button"
 import {
   Pagination,
   PaginationContent,
@@ -67,8 +72,39 @@ export default function NewsFeed() {
 
   return (
     <main className="flex-1 border-r border-border bg-background min-h-[calc(100vh-73px)]">
-      {/* Filters Header */}
-      <div className="bg-card border-b border-border p-6 sticky top-[73px] z-40">
+      {/* Mobile Header with Filters */}
+      <div className="lg:hidden sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+        <div className="flex items-center justify-between p-4">
+          <h1 className="text-xl font-bold">
+            Latest News
+            <span className="ml-2 text-sm text-muted-foreground font-normal">
+              ({filteredArticles.length})
+            </span>
+          </h1>
+          
+          <div className="flex items-center gap-2">
+            <MobileFilterSheet />
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => {
+                const nextSort = sortOrder === 'newest' ? 'oldest' : sortOrder === 'oldest' ? 'relevant' : 'newest'
+                setSortOrder(nextSort)
+              }}
+            >
+              <ArrowUpDown className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Active filters chips - scrollable on mobile */}
+        <div className="px-4 pb-3">
+          <ActiveFiltersChips />
+        </div>
+      </div>
+
+      {/* Filters Header - Desktop */}
+      <div className="hidden lg:block bg-card border-b border-border p-6 sticky top-[73px] z-40">
         <button
           onClick={() => setFiltersOpen((v) => !v)}
           className="flex items-center justify-between w-full group"
@@ -115,9 +151,9 @@ export default function NewsFeed() {
       </div>
 
       {/* Articles */}
-      <div className="p-8 max-w-5xl mx-auto">
+      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
         {loading ? (
-          <NewsFeedSkeleton />
+          <ArticleListSkeleton count={7} />
         ) : Object.keys(groupedArticles).length > 0 ? (
           <div className="space-y-8">
             {Object.entries(groupedArticles).map(([dateStr, articles]) => (

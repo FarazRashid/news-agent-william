@@ -1,6 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import type { FilterState, Article, FilterCounts } from "./types"
 import { filterArticles, calculateFilterCounts, extractCategoryTokensFromArticle } from "./filter-utils"
 import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
@@ -57,6 +58,8 @@ const defaultFilters: FilterState = {
 const NewsContext = createContext<NewsContextType | undefined>(undefined)
 
 export function NewsProvider({ children }: { children: ReactNode }) {
+  const router = useRouter()
+  const searchParams = useSearchParams()
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const [sortOrder, setSortOrderState] = useState<SortOrder>("newest")
   const [articles, setArticles] = useState<Article[]>()
@@ -66,6 +69,92 @@ export function NewsProvider({ children }: { children: ReactNode }) {
   const [pageSize, setPageSizeState] = useState<number>(7)
 
   const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+
+  // Load filters from localStorage on mount
+  useEffect(() => {
+    const savedFilters = localStorage.getItem('news-filters')
+    const savedSort = localStorage.getItem('news-sort-order')
+    
+    if (savedFilters) {
+      try {
+        const parsed = JSON.parse(savedFilters)
+        setFilters(prev => ({ ...prev, ...parsed }))
+      } catch (e) {
+        console.error('Failed to parse saved filters')
+      }
+    }
+    
+    if (savedSort && (savedSort === 'newest' || savedSort === 'oldest' || savedSort === 'relevant')) {
+      setSortOrderState(savedSort as SortOrder)
+    }
+  }, [])
+
+  // Load filters from URL parameters on mount
+  useEffect(() => {
+    const urlFilters: Partial<FilterState> = {}
+    
+    const search = searchParams.get("search")
+    if (search) urlFilters.search = search
+
+    const categories = searchParams.get("categories")
+    if (categories) urlFilters.categories = categories.split(",").filter(Boolean)
+
+    const sources = searchParams.get("sources")
+    if (sources) urlFilters.sources = sources.split(",").filter(Boolean)
+
+    const locations = searchParams.get("locations")
+    if (locations) urlFilters.locations = locations.split(",").filter(Boolean)
+
+    const timeRange = searchParams.get("timeRange")
+    if (timeRange && ["hour", "day", "week", "month", "3months", "year", "all"].includes(timeRange)) {
+      urlFilters.timeRange = {
+        start: null,
+        end: null,
+        preset: timeRange as any,
+      }
+    }
+
+    const sort = searchParams.get("sort")
+    if (sort && (sort === 'newest' || sort === 'oldest' || sort === 'relevant')) {
+      setSortOrderState(sort as SortOrder)
+    }
+
+    if (Object.keys(urlFilters).length > 0) {
+      setFilters(prev => ({ ...prev, ...urlFilters }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Save filters to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('news-filters', JSON.stringify(filters))
+  }, [filters])
+
+  // Save sort order to localStorage
+  useEffect(() => {
+    localStorage.setItem('news-sort-order', sortOrder)
+  }, [sortOrder])
+
+  // Update URL when filters change (debounced via timeout)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams()
+
+      if (filters.search) params.set("search", filters.search)
+      if (filters.categories.length > 0) params.set("categories", filters.categories.join(","))
+      if (filters.sources.length > 0) params.set("sources", filters.sources.join(","))
+      if (filters.locations.length > 0) params.set("locations", filters.locations.join(","))
+      if (filters.timeRange.preset !== "all") params.set("timeRange", filters.timeRange.preset)
+      if (sortOrder !== "newest") params.set("sort", sortOrder)
+
+      const query = params.toString()
+      const newUrl = query ? `/?${query}` : "/"
+      
+      router.replace(newUrl, { scroll: false })
+    }, 500)
+
+    return () => clearTimeout(timer)
+  }, [filters, sortOrder, router])
 
   const loadArticles = useCallback(async () => {
     setLoading(true)
