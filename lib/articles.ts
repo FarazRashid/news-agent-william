@@ -19,6 +19,17 @@ export type ArticleRow = {
   created_at: string | null
   published_at: string | null
   post_url?: string | null
+  // SEO and metadata fields
+  word_count?: number | null
+  read_time_minutes?: number | null
+  sentiment?: string | null
+  urgency?: string | null
+  audience_level?: string | null
+  meta_title?: string | null
+  meta_description?: string | null
+  focus_keyword?: string | null
+  related_keywords?: string[] | null
+  readability_score?: string | null
 }
 
 
@@ -270,6 +281,17 @@ export function mapArticleRowToArticle(row: ArticleRow): Article {
     },
     location: pickFirst(row.geographic_focus) ?? "Global",
     content: row.body ?? "",
+    // SEO and metadata fields
+    wordCount: row.word_count ?? undefined,
+    readTimeMinutes: row.read_time_minutes ?? undefined,
+    sentiment: row.sentiment ?? null,
+    urgency: row.urgency ?? null,
+    audienceLevel: row.audience_level ?? null,
+    metaTitle: row.meta_title ?? null,
+    metaDescription: row.meta_description ?? null,
+    focusKeyword: row.focus_keyword ?? null,
+    relatedKeywords: row.related_keywords ?? null,
+    readabilityScore: row.readability_score ?? null,
   }
 }
 
@@ -282,7 +304,7 @@ export async function fetchArticlesFromSupabase(supabase: any, opts: GetArticles
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id, headline, subheadline, lead_paragraph, body, conclusion, category, primary_topic, tags, secondary_topics, canonical_topics, sources, image_suggestions, geographic_focus, created_at, published_at, post_url"
+      "id, headline, subheadline, lead_paragraph, body, conclusion, category, primary_topic, tags, secondary_topics, canonical_topics, sources, image_suggestions, geographic_focus, created_at, published_at, post_url, word_count, read_time_minutes, sentiment, urgency, audience_level, meta_title, meta_description, focus_keyword, related_keywords, readability_score"
     )
     .order("published_at", { ascending: false })
     .limit(limit)
@@ -296,7 +318,7 @@ export async function fetchArticleById(supabase: any, id: string | number): Prom
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id, headline, subheadline, lead_paragraph, body, conclusion, category, primary_topic, tags, secondary_topics, canonical_topics, sources, image_suggestions, geographic_focus, created_at, published_at, post_url"
+      "id, headline, subheadline, lead_paragraph, body, conclusion, category, primary_topic, tags, secondary_topics, canonical_topics, sources, image_suggestions, geographic_focus, created_at, published_at, post_url, word_count, read_time_minutes, sentiment, urgency, audience_level, meta_title, meta_description, focus_keyword, related_keywords, readability_score"
     )
     .eq("id", id)
     .limit(1)

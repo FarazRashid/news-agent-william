@@ -24,6 +24,17 @@ export type Article = {
   }
   location: string
   content: string
+  // SEO and metadata fields
+  wordCount?: number
+  readTimeMinutes?: number
+  sentiment?: string | null
+  urgency?: string | null
+  audienceLevel?: string | null
+  metaTitle?: string | null
+  metaDescription?: string | null
+  focusKeyword?: string | null
+  relatedKeywords?: string[] | null
+  readabilityScore?: string | null
 }
 
 export type FilterState = {

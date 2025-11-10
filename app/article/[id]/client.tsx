@@ -6,11 +6,11 @@ import Link from "next/link"
 import type { Article } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
 import { ArrowLeft } from "lucide-react"
 import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
 import { fetchArticleById } from "@/lib/articles"
+import { ArticleMetadata, ArticleSEOKeywords } from "@/components/article-metadata"
 
 export default function ArticleClient({ id }: { id: string }) {
   const [article, setArticle] = useState<Article | null>(null)
@@ -151,8 +151,9 @@ export default function ArticleClient({ id }: { id: string }) {
 
       <main className="px-6 py-8">
         <div className="max-w-3xl mx-auto space-y-6">
-          <div className="space-y-3">
-            <Badge variant="outline" className="mb-1">{article.category}</Badge>
+          <div className="space-y-4">
+            <ArticleMetadata article={article} />
+
             <h1 className="text-3xl md:text-4xl font-bold leading-tight">{article.title}</h1>
             {article.subheadline ? (
               <p className="text-lg text-muted-foreground">{article.subheadline}</p>
@@ -161,7 +162,7 @@ export default function ArticleClient({ id }: { id: string }) {
                 <p className="text-lg text-muted-foreground">{article.description}</p>
               )
             )}
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+            <div className="flex items-center gap-3 text-sm text-muted-foreground pt-2 border-t border-border">
               <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
                 {article.source.logo}
               </div>
@@ -211,6 +212,9 @@ export default function ArticleClient({ id }: { id: string }) {
               </>
             )}
           </Card>
+
+          {/* SEO Keywords at the bottom */}
+          <ArticleSEOKeywords article={article} />
         </div>
       </main>
     </div>
