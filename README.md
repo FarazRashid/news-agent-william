@@ -19,8 +19,8 @@ A lightweight agent for fetching, processing, and summarizing news articles. Des
 
 1. Clone the repo
 ```bash
-git clone https://github.com/Entropik-Labs/william-news-agent.git
-cd william-news-agent
+git clone {repo-link}
+cd {repo-name}
 ```
 
 2. Install dependencies
