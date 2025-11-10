@@ -1,0 +1,498 @@
+"use client"
+
+import { useState, useMemo, useEffect } from "react"
+import { ChevronDown, Search, Clock, Zap, MapPin, LinkIcon, X, MessageSquare, Send, ChevronLeft, ChevronRight } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { useNews } from "@/lib/news-context"
+import { Textarea } from "@/components/ui/textarea"
+import { useSidebarContext } from "@/components/header"
+
+const TIME_PRESETS = [
+  { value: "hour", label: "Past Hour" },
+  { value: "day", label: "Past 24 Hours" },
+  { value: "week", label: "Past Week" },
+  { value: "month", label: "Past Month" },
+  { value: "3months", label: "Past 3 Months" },
+  { value: "year", label: "Past Year" },
+  { value: "all", label: "All Time" },
+]
+
+// Categories are derived dynamically from loaded articles via context
+
+type SectionKey = "search" | "time" | "topics" | "entities" | "locations" | "sources"
+
+export default function FiltersSidebar() {
+  const { filters, updateFilter, resetFilters, filterCounts, availableCategories } = useNews()
+  const { isCollapsed, toggleSidebar } = useSidebarContext()
+  
+  // Hydration guard: render dynamic counts only after mount
+  const [hydrated, setHydrated] = useState(false)
+  const [chatMessage, setChatMessage] = useState("")
+  useEffect(() => setHydrated(true), [])
+  const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
+    search: true,
+    time: false,
+    topics: false,
+    entities: false,
+    locations: false,
+    sources: false,
+  })
+
+  const toggleSection = (section: SectionKey) => {
+    setExpandedSections((prev) => ({
+      ...prev,
+      [section]: !prev[section],
+    }))
+  }
+
+  const handleSendMessage = () => {
+    if (chatMessage.trim()) {
+      // TODO: Implement chat functionality
+      console.log("Chat message:", chatMessage)
+      setChatMessage("")
+    }
+  }
+
+  const allPeople = useMemo(() => Object.keys(filterCounts.people).sort((a, b) => a.localeCompare(b)), [filterCounts])
+  const allCompanies = useMemo(
+    () => Object.keys(filterCounts.companies).sort((a, b) => a.localeCompare(b)),
+    [filterCounts],
+  )
+  const allLocations = useMemo(
+    () => Object.keys(filterCounts.locations).sort((a, b) => a.localeCompare(b)),
+    [filterCounts],
+  )
+  const allDomains = useMemo(
+    () => Object.keys(filterCounts.domains).sort((a, b) => a.localeCompare(b)),
+    [filterCounts],
+  )
+  const allStockSymbols = useMemo(
+    () => Object.keys(filterCounts.stockSymbols).sort((a, b) => a.localeCompare(b)),
+    [filterCounts],
+  )
+
+  return (
+    <>
+      {/* Collapsed state - thin bar on the left */}
+      {isCollapsed && (
+        <div className="hidden lg:flex flex-col w-12 border-r border-border bg-card items-center py-4">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className="h-10 w-10"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
+      )}
+
+      {/* Expanded state - full sidebar */}
+      {!isCollapsed && (
+        <aside className="hidden lg:flex flex-col w-80 border-r border-border bg-card overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleSidebar}
+                className="h-8 w-8 -ml-2"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <h2 className="font-semibold text-foreground text-base">Filters</h2>
+            </div>
+            <Button variant="ghost" size="sm" className="text-xs h-8 px-3" onClick={resetFilters}>
+              Clear All
+            </Button>
+          </div>
+
+      {/* Scrollable Filter Area */}
+      {/* Scrollable Filter Area */}
+      <div className="flex-1 overflow-y-auto px-4 py-2">
+        {/* Search */}
+        <div className="mb-3">
+          <button 
+            onClick={() => toggleSection("search")} 
+            className="flex items-center justify-between w-full py-3 px-2 hover:bg-muted/50 rounded-md transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Search className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Search</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {hydrated && filters.search && (
+                <div className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">1</div>
+              )}
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedSections.search ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+          {expandedSections.search && (
+            <div className="px-2 pb-3 pt-2">
+              <Input
+                placeholder="Search articles..."
+                className="text-sm h-9"
+                value={filters.search}
+                onChange={(e) => updateFilter("search", e.target.value)}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Time */}
+        <div className="mb-3">
+          <button 
+            onClick={() => toggleSection("time")} 
+            className="flex items-center justify-between w-full py-3 px-2 hover:bg-muted/50 rounded-md transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Clock className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Time Range</span>
+            </div>
+            <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedSections.time ? "rotate-180" : ""}`} />
+          </button>
+          {expandedSections.time && (
+            <div className="px-2 pb-3 pt-2 space-y-2">
+              {TIME_PRESETS.map((preset) => (
+                <label key={preset.value} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-muted/30 p-2 rounded">
+                  <input
+                    type="radio"
+                    name="time"
+                    value={preset.value}
+                    checked={filters.timeRange.preset === preset.value}
+                    onChange={(e) =>
+                      updateFilter("timeRange", {
+                        ...filters.timeRange,
+                        preset: e.target.value as any,
+                      })
+                    }
+                    className="w-4 h-4 accent-primary"
+                  />
+                  <span className="text-foreground">{preset.label}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Topics & Types */}
+        <div className="mb-3">
+          <button 
+            onClick={() => toggleSection("topics")} 
+            className="flex items-center justify-between w-full py-3 px-2 hover:bg-muted/50 rounded-md transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <Zap className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Topics & Types</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {filters.categories.length > 0 && (
+                <div className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
+                  {filters.categories.length}
+                </div>
+              )}
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedSections.topics ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+          {expandedSections.topics && (
+            <div className="px-2 pb-3 pt-2 space-y-1">
+            {availableCategories.map((category) => (
+              <label key={category} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-muted/30 p-2 rounded">
+                <Checkbox
+                  checked={filters.categories.includes(category)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      updateFilter("categories", [...filters.categories, category])
+                    } else {
+                      updateFilter(
+                        "categories",
+                        filters.categories.filter((c) => c !== category),
+                      )
+                    }
+                  }}
+                />
+                <span className="text-foreground flex-1">{category}</span>
+                <span
+                  className="text-xs text-muted-foreground"
+                  suppressHydrationWarning
+                >
+                  {hydrated ? (filterCounts.categories[category] || 0) : ""}
+                </span>
+              </label>
+            ))}
+            </div>
+          )}
+        </div>
+
+        {/* Entities */}
+        <div className="mb-3">
+          <button
+            onClick={() => toggleSection("entities")}
+            className="flex items-center justify-between w-full py-3 px-2 hover:bg-muted/50 rounded-md transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-muted-foreground">#</span>
+              <span className="text-sm font-medium">Entities</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {hydrated && (filters.entities.people.length > 0 || filters.entities.companies.length > 0) && (
+                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
+                  {filters.entities.people.length + filters.entities.companies.length}
+                </span>
+              )}
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedSections.entities ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+          {expandedSections.entities && (
+            <div className="px-2 pb-3 pt-2 space-y-3">
+              <div>
+                <h4 className="font-medium text-foreground mb-2 text-xs text-muted-foreground uppercase">People</h4>
+                {!hydrated ? (
+                  <p className="text-xs text-muted-foreground">Loading...</p>
+                ) : allPeople.length > 0 ? (
+                  <div className="space-y-1">
+                    {allPeople.map((person) => (
+                      <label key={person} className="flex items-center gap-2 cursor-pointer text-xs hover:bg-muted/30 p-2 rounded">
+                        <Checkbox
+                          checked={filters.entities.people.includes(person)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              updateFilter("entities", {
+                                ...filters.entities,
+                                people: [...filters.entities.people, person],
+                              })
+                            } else {
+                              updateFilter("entities", {
+                                ...filters.entities,
+                                people: filters.entities.people.filter((p) => p !== person),
+                              })
+                            }
+                          }}
+                        />
+                        <span className="flex-1">{person}</span>
+                        <span
+                          className="text-muted-foreground"
+                          suppressHydrationWarning
+                        >
+                          {hydrated ? (filterCounts.people[person] || 0) : ""}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No people found</p>
+                )}
+              </div>
+              <div>
+                <h4 className="font-medium text-foreground mb-2 text-xs text-muted-foreground uppercase">Companies</h4>
+                {!hydrated ? (
+                  <p className="text-xs text-muted-foreground">Loading...</p>
+                ) : allCompanies.length > 0 ? (
+                  <div className="space-y-1">
+                    {allCompanies.map((company) => (
+                      <label key={company} className="flex items-center gap-2 cursor-pointer text-xs hover:bg-muted/30 p-2 rounded">
+                        <Checkbox
+                          checked={filters.entities.companies.includes(company)}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              updateFilter("entities", {
+                                ...filters.entities,
+                                companies: [...filters.entities.companies, company],
+                              })
+                            } else {
+                              updateFilter("entities", {
+                                ...filters.entities,
+                                companies: filters.entities.companies.filter((c) => c !== company),
+                              })
+                            }
+                          }}
+                        />
+                        <span className="flex-1">{company}</span>
+                        <span
+                          className="text-muted-foreground"
+                          suppressHydrationWarning
+                        >
+                          {hydrated ? (filterCounts.companies[company] || 0) : ""}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">No companies found</p>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Locations */}
+        <div className="mb-3">
+          <button
+            onClick={() => toggleSection("locations")}
+            className="flex items-center justify-between w-full py-3 px-2 hover:bg-muted/50 rounded-md transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <MapPin className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Locations</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {hydrated && filters.locations.length > 0 && (
+                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
+                  {filters.locations.length}
+                </span>
+              )}
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedSections.locations ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+          {expandedSections.locations && (
+            <div className="px-2 pb-3 pt-2 space-y-1">
+              {!hydrated ? (
+                <p className="text-xs text-muted-foreground">Loading...</p>
+              ) : (
+                allLocations.map((location) => (
+                  <label key={location} className="flex items-center gap-2 cursor-pointer text-sm hover:bg-muted/30 p-2 rounded">
+                    <Checkbox
+                      checked={filters.locations.includes(location)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          updateFilter("locations", [...filters.locations, location])
+                        } else {
+                          updateFilter(
+                            "locations",
+                            filters.locations.filter((l) => l !== location),
+                          )
+                        }
+                      }}
+                    />
+                    <span className="text-foreground flex-1">{location}</span>
+                    <span
+                      className="text-xs text-muted-foreground"
+                      suppressHydrationWarning
+                    >
+                      {hydrated ? (filterCounts.locations[location] || 0) : ""}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Sources */}
+        <div className="mb-3">
+          <button
+            onClick={() => toggleSection("sources")}
+            className="flex items-center justify-between w-full py-3 px-2 hover:bg-muted/50 rounded-md transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <LinkIcon className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">Sources</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {hydrated && filters.sources.length > 0 && (
+                <span className="bg-primary text-primary-foreground text-xs px-2 py-0.5 rounded-full font-medium">
+                  {filters.sources.length}
+                </span>
+              )}
+              <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expandedSections.sources ? "rotate-180" : ""}`} />
+            </div>
+          </button>
+          {expandedSections.sources && (
+            <div className="px-2 pb-3 pt-2 space-y-2">
+              {/* Active sources as tags */}
+              {hydrated && filters.sources.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {filters.sources.map((source) => (
+                    <div
+                      key={source}
+                      className="bg-primary text-primary-foreground px-2 py-1 rounded text-xs flex items-center gap-1"
+                    >
+                      {source}
+                      <X
+                        className="w-3 h-3 cursor-pointer hover:opacity-70"
+                        onClick={() =>
+                          updateFilter(
+                            "sources",
+                            filters.sources.filter((s) => s !== source),
+                          )
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+              )}
+              {/* Source selector */}
+              <div className="space-y-1">
+                {!hydrated ? (
+                  <p className="text-xs text-muted-foreground">Loading...</p>
+                ) : (
+                  allDomains.map((domain) => (
+                    <label key={domain} className="flex items-center gap-2 cursor-pointer text-xs hover:bg-muted/30 p-2 rounded">
+                    <Checkbox
+                      checked={filters.sources.includes(domain)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          updateFilter("sources", [...filters.sources, domain])
+                        } else {
+                          updateFilter(
+                            "sources",
+                            filters.sources.filter((s) => s !== domain),
+                          )
+                        }
+                      }}
+                    />
+                    <span>{domain}</span>
+                    <span
+                      className="text-muted-foreground ml-auto"
+                      suppressHydrationWarning
+                    >
+                      {hydrated ? (filterCounts.domains[domain] || 0) : ""}
+                    </span>
+                  </label>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+      </div>
+
+      {/* Chat Interface at Bottom */}
+      <div className="border-t border-border bg-muted/30">
+        <div className="p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <MessageSquare className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">Ask about filters</span>
+          </div>
+          <div className="flex gap-2">
+            <Textarea
+              placeholder="e.g., Show me tech news from last week..."
+              value={chatMessage}
+              onChange={(e) => setChatMessage(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSendMessage()
+                }
+              }}
+              className="text-sm resize-none h-20"
+            />
+            <Button 
+              size="icon" 
+              onClick={handleSendMessage}
+              disabled={!chatMessage.trim()}
+              className="shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      </div>
+        </aside>
+      )}
+    </>
+  )
+}
