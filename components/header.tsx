@@ -74,10 +74,10 @@ export default function Header() {
         <div className="flex gap-3">
         
            
-          <Button variant="ghost" className="text-sm">
+          {/* <Button variant="ghost" className="text-sm">
             Sign In
           </Button>
-          <Button className="bg-foreground text-background hover:bg-foreground/90 text-sm">Get Started</Button>
+          <Button className="bg-foreground text-background hover:bg-foreground/90 text-sm">Get Started</Button> */}
         </div>
       </div>
     </header>
