@@ -273,6 +273,7 @@ export function mapArticleRowToArticle(row: ArticleRow): Article {
     },
     publishedAt: new Date(publishedAtISO),
     category: (row.category ?? "Uncategorized").trim(),
+    primaryTopic: row.primary_topic ?? null,
     topics,
     entities: {
       people: [],

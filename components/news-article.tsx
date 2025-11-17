@@ -1,6 +1,8 @@
 import type { Article } from "@/lib/types"
 import Link from "next/link"
 import Image from "next/image"
+import { Badge } from "@/components/ui/badge"
+import { Target, Users, CheckCircle2 } from "lucide-react"
 
 export default function NewsArticle({ article }: { article: Article }) {
   return (
@@ -27,6 +29,63 @@ export default function NewsArticle({ article }: { article: Article }) {
         <p className="text-muted-foreground text-sm sm:text-base leading-relaxed line-clamp-2 sm:line-clamp-3 mb-3 sm:mb-4">
           {article.description}
         </p>
+        {/* Tags / badges */}
+        <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          {article.category && (
+            <Badge variant="outline" className="capitalize">
+              {article.category}
+            </Badge>
+          )}
+          {/* Mixed meta badges FIRST: urgency, audience level, readability, with icons */}
+          {article.urgency && (
+            <Badge variant="secondary" className="text-xs font-normal capitalize">
+              <Target className="w-3 h-3 mr-1" />
+              {article.urgency}
+            </Badge>
+          )}
+          {article.audienceLevel && (
+            <Badge variant="secondary" className="text-xs font-normal capitalize">
+              <Users className="w-3 h-3 mr-1" />
+              {article.audienceLevel}
+            </Badge>
+          )}
+          {article.readabilityScore && (
+            <Badge
+              variant="secondary"
+              className="text-xs font-normal capitalize bg-blue-500/10 text-blue-700 dark:text-blue-400 border-blue-500/20"
+            >
+              <CheckCircle2 className="w-3 h-3 mr-1" />
+              {article.readabilityScore} readability
+            </Badge>
+          )}
+
+          {/* Separation to differentiate meta vs topics */}
+          {(() => {
+            const seen = new Set<string>()
+            const topicTags: string[] = []
+            if (article.primaryTopic && !seen.has(article.primaryTopic)) {
+              seen.add(article.primaryTopic)
+              topicTags.push(article.primaryTopic)
+            }
+            for (const t of article.topics || []) {
+              if (topicTags.length >= 3) break
+              if (t && !seen.has(t)) {
+                seen.add(t)
+                topicTags.push(t)
+              }
+            }
+            if (topicTags.length === 0) return null
+            return (
+              <div className="flex flex-wrap gap-1.5 ml-2 pl-2 border-l border-border/60">
+                {topicTags.map((t, idx) => (
+                  <Badge key={`${t}-${idx}`} variant="secondary" className="text-xs font-normal capitalize">
+                    {t}
+                  </Badge>
+                ))}
+              </div>
+            )
+          })()}
+        </div>
         <div className="flex items-center gap-3 sm:gap-4 text-xs sm:text-sm text-muted-foreground flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
@@ -43,6 +102,20 @@ export default function NewsArticle({ article }: { article: Article }) {
               timeZone: "UTC",
             })}
           </span>
+          {(article.wordCount || article.readTimeMinutes) && (
+            <>
+              <span>•</span>
+              {article.wordCount && (
+                <span className="whitespace-nowrap">{article.wordCount.toLocaleString()} words</span>
+              )}
+              {article.readTimeMinutes && (
+                <>
+                  {article.wordCount && <span>•</span>}
+                  <span className="whitespace-nowrap">{article.readTimeMinutes} min read</span>
+                </>
+              )}
+            </>
+          )}
         </div>
       </div>
     </Link>

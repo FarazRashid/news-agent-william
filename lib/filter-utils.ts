@@ -125,6 +125,34 @@ export function filterArticles(articles: Article[], filters: FilterState): Artic
       if (!matches) return false
     }
 
+    // Primary Topics filter (OR logic)
+    if (filters.primaryTopics.length > 0) {
+      const artCanonical = canonicalizePrimaryTopic(article.primaryTopic)
+      const artNorm = normalizePrimarySubtopic(article.primaryTopic)
+      const artTokens = tokenizePrimarySubtopic(article.primaryTopic)
+      const match = filters.primaryTopics.some((sel) => {
+        const selCanonical = canonicalizePrimaryTopic(sel)
+        const selNorm = normalizePrimarySubtopic(sel)
+        const selTokens = tokenizePrimarySubtopic(sel)
+        // exact or canonical equality
+        if (
+          sel === article.primaryTopic ||
+          (artCanonical !== null && sel === artCanonical) ||
+          (selCanonical !== null && artCanonical !== null && selCanonical === artCanonical) ||
+          (selNorm !== null && artNorm !== null && selNorm === artNorm)
+        ) {
+          return true
+        }
+        // subset: selected tokens must be contained in the article's tokens
+        if (selTokens.length > 0 && artTokens.length > 0) {
+          const setA = new Set(artTokens)
+          return selTokens.every((t) => setA.has(t))
+        }
+        return false
+      })
+      if (!match) return false
+    }
+
     // People filter (OR logic)
     if (
       filters.entities.people.length > 0 &&
@@ -171,6 +199,7 @@ export function filterArticles(articles: Article[], filters: FilterState): Artic
 export function calculateFilterCounts(articles: Article[]) {
   const counts = {
     categories: {} as Record<string, number>,
+    primaryTopics: {} as Record<string, number>,
     people: {} as Record<string, number>,
     companies: {} as Record<string, number>,
     locations: {} as Record<string, number>,
@@ -189,6 +218,12 @@ export function calculateFilterCounts(articles: Article[]) {
       tokens.forEach((t) => {
         counts.categories[t] = (counts.categories[t] || 0) + 1
       })
+    }
+
+    // Primary Topics (count by canonical bucket)
+    if (article.primaryTopic) {
+      const main = canonicalizePrimaryTopic(article.primaryTopic) || article.primaryTopic
+      counts.primaryTopics[main] = (counts.primaryTopics[main] || 0) + 1
     }
 
     // People
@@ -219,4 +254,103 @@ export function calculateFilterCounts(articles: Article[]) {
   })
 
   return counts
+}
+
+// --- Primary topic canonicalization and helpers ---
+
+function titleCase(s: string): string {
+  return s
+    .trim()
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+    .join(" ")
+}
+
+/**
+ * Reduce verbose primary topics into canonical buckets.
+ * Heuristic rules focus on most common domains in dataset.
+ */
+export function canonicalizePrimaryTopic(input: string | null | undefined): string | null {
+  if (!input) return null
+  const s = input.trim()
+  if (!s) return null
+  const lower = s.toLowerCase()
+
+  const rules: Array<{ regex: RegExp; label: string }> = [
+    { regex: /social security/i, label: "Social Security" },
+    { regex: /retirement\s+(planning|income|landscape|finance|readiness)?/i, label: "Retirement Planning" },
+    { regex: /\bs&p\b|s&p\s*500/i, label: "S&P 500" },
+    { regex: /stock\s+market|\bstocks?\b/i, label: "Stocks" },
+    { regex: /interest\s+rates?/i, label: "Interest Rates" },
+    { regex: /\bnvidia\b/i, label: "Nvidia" },
+    { regex: /artificial\s+intelligence|\bai\b/i, label: "AI" },
+    { regex: /technology/i, label: "Technology" },
+    { regex: /\boil\b|oil\s+exports?/i, label: "Oil" },
+    { regex: /warren\s+buffett/i, label: "Warren Buffett" },
+    { regex: /interest\s+rate/i, label: "Interest Rates" },
+  ]
+
+  for (const r of rules) {
+    if (r.regex.test(s)) return r.label
+  }
+
+  // Remove common geographic qualifiers
+  const cleaned = lower
+    .replace(/\bin the u\.?s\.?\b|\bin the united states\b/gi, "")
+    .replace(/\sof\s+the\s+u\.?s\.?/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim()
+
+  // Prefer first 3 significant words as fallback bucket name
+  const tokens = cleaned.split(/[^a-z0-9]+/).filter(Boolean)
+  const label = tokens.slice(0, 3).join(" ") || s
+  return titleCase(label)
+}
+
+/**
+ * Normalize a specific primary topic phrase for grouping/matching.
+ * Collapses common wording variants (US vs U.S., articles, stopwords, etc.).
+ */
+export function normalizePrimarySubtopic(input: string | null | undefined): string | null {
+  if (!input) return null
+  let s = input.toLowerCase()
+  // Standardize US variants
+  s = s.replace(/\b(u\.?s\.?|united states|u\.s\.a\.|usa)\b/g, "us")
+  // Remove leading boilerplate
+  s = s.replace(/\b(the\s+)?current\s+state\s+of\s+/g, "")
+  // Token-level stemming/synonyms
+  s = s
+    .replace(/\bretirement\b/g, "retire")
+    .replace(/\bplanning\b/g, "plan")
+    .replace(/\bbenefits?\b/g, "benefit")
+    .replace(/\badjustment(s)?\b/g, "adj")
+    .replace(/\badjustments?\b/g, "adj")
+    .replace(/\bchanges?\b/g, "change")
+    .replace(/\bstrateg(y|ies)\b/g, "strategy")
+  // Remove common stopwords
+  s = s.replace(/\b(the|of|and|in|on|for|to|a|an|with|by|from)\b/g, " ")
+  // Remove punctuation, tokenize
+  const tokens = s
+    .replace(/[^a-z0-9]+/g, " ")
+    .split(/\s+/)
+    .filter(Boolean)
+  if (tokens.length === 0) return null
+  // Sort tokens so word order differences collapse to one key
+  tokens.sort()
+  // Deduplicate adjacent equal tokens
+  const deduped: string[] = []
+  for (const t of tokens) {
+    if (deduped[deduped.length - 1] !== t) deduped.push(t)
+  }
+  return deduped.join(" ")
+}
+
+/** Return sorted, deduped tokens for a subtopic, ignoring common group tokens */
+export function tokenizePrimarySubtopic(input: string | null | undefined): string[] {
+  const norm = normalizePrimarySubtopic(input)
+  if (!norm) return []
+  const ignore = new Set(["social", "security"])
+  return norm
+    .split(" ")
+    .filter((t) => t && !ignore.has(t))
 }

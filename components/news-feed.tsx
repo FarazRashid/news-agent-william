@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { ChevronDown, ArrowUpDown } from "lucide-react"
+import { canonicalizePrimaryTopic, normalizePrimarySubtopic } from "@/lib/filter-utils"
 import { useNews } from "@/lib/news-context"
 import NewsArticle from "./news-article"
 import NewsFeedSkeleton from "./news-feed-skeleton"
@@ -29,6 +30,9 @@ export default function NewsFeed() {
     loading,
     error,
     availableCategories,
+    availablePrimaryTopics,
+    filterCounts,
+    groupedPrimaryTopics,
     paginatedArticles,
     page,
     totalPages,
@@ -36,12 +40,23 @@ export default function NewsFeed() {
   } = useNews()
 
   const [filtersOpen, setFiltersOpen] = useState(true)
+  const [showAllTopics, setShowAllTopics] = useState(false)
+  const [selectedSubtopic, setSelectedSubtopic] = useState<string | null>(null)
 
-  const selectedCategory = useMemo(() => {
-    if (filters.categories.length === 1) return filters.categories[0]
-    if (filters.categories.length === 0) return "All"
-    return null
-  }, [filters.categories])
+  const formatLabel = (s: string) =>
+    s
+      .trim()
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ")
+
+  // Track which primary topic is selected (single-select UX like before)
+  const selectedPrimaryTopic = useMemo(() => {
+    if (filters.primaryTopics.length === 0) return "All"
+    const first = filters.primaryTopics[0]
+    const canon = canonicalizePrimaryTopic(first)
+    return canon || first
+  }, [filters.primaryTopics])
 
   const groupedArticles = useMemo(() => {
     const groups: Record<string, typeof filteredArticles> = {}
@@ -60,15 +75,40 @@ export default function NewsFeed() {
     return groups
   }, [paginatedArticles])
 
-  const handleCategoryClick = (category: string) => {
-    if (category === "All") {
-      updateFilter("categories", [])
-    } else if (selectedCategory === category) {
-      updateFilter("categories", [])
+  const handlePrimaryTopicClick = (topic: string) => {
+    if (topic === "All") {
+      updateFilter("primaryTopics", [])
+      setSelectedSubtopic(null)
+    } else if (selectedPrimaryTopic === topic) {
+      updateFilter("primaryTopics", [])
+      setSelectedSubtopic(null)
     } else {
-      updateFilter("categories", [category])
+      updateFilter("primaryTopics", [topic])
+      setSelectedSubtopic(null)
     }
   }
+
+  // Sort primary topics by frequency desc then alphabetically
+  const sortedPrimaryTopics = useMemo(() => {
+    // Use grouped mains for deduped list
+    return groupedPrimaryTopics.map((g) => g.main)
+  }, [groupedPrimaryTopics])
+
+  const TOPIC_LIMIT = 8
+  const displayedTopics = useMemo(
+    () => (showAllTopics ? sortedPrimaryTopics : sortedPrimaryTopics.slice(0, TOPIC_LIMIT)),
+    [showAllTopics, sortedPrimaryTopics]
+  )
+
+  // Basic related topics by shared keyword with selected topic (exclude very short words)
+  const relatedTopics = useMemo(() => {
+    if (!selectedPrimaryTopic || selectedPrimaryTopic === "All") return [] as string[]
+    const grp = groupedPrimaryTopics.find((g) => g.main === selectedPrimaryTopic)
+    if (!grp) return []
+    const mainNorm = normalizePrimarySubtopic(selectedPrimaryTopic)
+    const cleaned = grp.subtopics.filter((s) => normalizePrimarySubtopic(s) !== mainNorm)
+    return cleaned.slice(0, 15)
+  }, [selectedPrimaryTopic, groupedPrimaryTopics])
 
   return (
     <main className="flex-1 border-r border-border bg-background min-h-[calc(100vh-73px)]">
@@ -103,8 +143,8 @@ export default function NewsFeed() {
         </div>
       </div>
 
-      {/* Filters Header - Desktop */}
-      <div className="hidden lg:block bg-card border-b border-border p-6 sticky top-[73px] z-40">
+  {/* Filters Header - Desktop */}
+  <div className="hidden lg:block bg-card border-b border-border p-6">
         <button
           onClick={() => setFiltersOpen((v) => !v)}
           className="flex items-center justify-between w-full group"
@@ -119,22 +159,52 @@ export default function NewsFeed() {
                 {error ? `Error loading articles: ${error}` : "Loading latest articles from database..."}
               </div>
             )}
-            <div className="flex flex-wrap gap-2 mb-4">
-              {["All", ...availableCategories].map((category) => (
+            <div className="flex flex-wrap gap-2 mb-2">
+              {(["All", ...displayedTopics] as string[]).map((topic) => (
                 <button
-                  key={category}
-                  onClick={() => handleCategoryClick(category)}
+                  type="button"
+                  key={topic}
+                  onClick={() => handlePrimaryTopicClick(topic)}
                   className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                    (category === "All" && selectedCategory === "All") ||
-                    (category !== "All" && selectedCategory === category)
+                    (topic === "All" && selectedPrimaryTopic === "All") ||
+                    (topic !== "All" && selectedPrimaryTopic === topic)
                       ? "bg-primary text-primary-foreground"
                       : "bg-muted text-foreground hover:bg-muted/80"
                   }`}
                 >
-                  {category}
+                  {formatLabel(topic)}
                 </button>
               ))}
+              {sortedPrimaryTopics.length > TOPIC_LIMIT && (
+                <button
+                  onClick={() => setShowAllTopics((v) => !v)}
+                  className="px-3 py-1.5 rounded-full text-sm font-medium bg-secondary text-secondary-foreground hover:bg-secondary/80"
+                >
+                  {showAllTopics ? "Less" : "More"}
+                </button>
+              )}
             </div>
+            {selectedPrimaryTopic && selectedPrimaryTopic !== "All" && relatedTopics.length > 0 && (
+              <div className="mb-4">
+                <div className="text-xs text-muted-foreground mb-2">More under {formatLabel(selectedPrimaryTopic)}:</div>
+                <div className="flex flex-wrap gap-2">
+                  {relatedTopics.map((topic) => (
+                    <button
+                      type="button"
+                      key={topic}
+                      onClick={() => { setSelectedSubtopic(topic); updateFilter("primaryTopics", [topic]) }}
+                      className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                        (selectedSubtopic && normalizePrimarySubtopic(selectedSubtopic) === normalizePrimarySubtopic(topic))
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-muted text-foreground hover:bg-muted/80"
+                      }`}
+                    >
+                      {formatLabel(topic)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="flex items-center gap-2">
               <select
                 value={sortOrder}

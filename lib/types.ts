@@ -16,6 +16,7 @@ export type Article = {
   publishedAt: Date
   // Category comes from the database and can be any string; avoid constraining to a fixed union
   category: string
+  primaryTopic?: string | null
   topics: string[]
   entities: {
     people: string[]
@@ -45,6 +46,7 @@ export type FilterState = {
     preset: "all" | "hour" | "day" | "week" | "month" | "3months" | "year"
   }
   categories: string[]
+  primaryTopics: string[]
   entities: {
     people: string[]
     companies: string[]
@@ -57,6 +59,7 @@ export type FilterState = {
 
 export type FilterCounts = {
   categories: Record<string, number>
+  primaryTopics: Record<string, number>
   people: Record<string, number>
   companies: Record<string, number>
   locations: Record<string, number>

@@ -59,6 +59,18 @@ export function ActiveFiltersChips() {
     })
   })
 
+  // Primary Topics
+  filters.primaryTopics?.forEach((topic) => {
+    activeFilters.push({
+      label: `Topic: ${topic}`,
+      onRemove: () =>
+        updateFilter(
+          "primaryTopics",
+          filters.primaryTopics.filter((t) => t !== topic)
+        ),
+    })
+  })
+
   // Sources
   filters.sources.forEach((source) => {
     activeFilters.push({

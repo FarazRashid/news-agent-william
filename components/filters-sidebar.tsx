@@ -25,7 +25,7 @@ const TIME_PRESETS = [
 type SectionKey = "search" | "time" | "topics" | "entities" | "locations" | "sources"
 
 export default function FiltersSidebar() {
-  const { filters, updateFilter, resetFilters, filterCounts, availableCategories } = useNews()
+  const { filters, updateFilter, resetFilters, filterCounts, availableCategories, availablePrimaryTopics, groupedPrimaryTopics } = useNews()
   const { isCollapsed, toggleSidebar } = useSidebarContext()
   
   // Debounced search input
@@ -54,6 +54,23 @@ export default function FiltersSidebar() {
     locations: false,
     sources: false,
   })
+
+  const [showAllPrimaryTopics, setShowAllPrimaryTopics] = useState(false)
+
+  const formatLabel = (s: string) =>
+    s
+      .trim()
+      .split(/\s+/)
+      .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
+      .join(" ")
+
+  const sortedPrimaryTopics = useMemo(() => groupedPrimaryTopics.map((g) => g.main), [groupedPrimaryTopics])
+
+  const PRIMARY_TOPIC_LIMIT = 12
+  const displayedPrimaryTopics = useMemo(
+    () => (showAllPrimaryTopics ? sortedPrimaryTopics : sortedPrimaryTopics.slice(0, PRIMARY_TOPIC_LIMIT)),
+    [showAllPrimaryTopics, sortedPrimaryTopics]
+  )
 
   const toggleSection = (section: SectionKey) => {
     setExpandedSections((prev) => ({
@@ -225,6 +242,43 @@ export default function FiltersSidebar() {
           </button>
           {expandedSections.topics && (
             <div className="px-1.5 md:px-2 pb-2 md:pb-3 pt-1.5 md:pt-2">
+              {/* Primary topics from DB */}
+              <div className="space-y-1 mb-2">
+                <h4 className="font-medium text-foreground mb-1 text-xs text-muted-foreground uppercase">Primary topics</h4>
+                <div className="space-y-0.5 max-h-40 md:max-h-48 overflow-y-auto">
+                  {displayedPrimaryTopics.map((topic: string) => (
+                    <label key={topic} className="flex items-center gap-2 cursor-pointer text-xs md:text-sm hover:bg-muted/30 p-1.5 md:p-2 rounded touch-manipulation min-w-0">
+                      <Checkbox
+                        checked={filters.primaryTopics.includes(topic)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            updateFilter("primaryTopics", [...filters.primaryTopics, topic])
+                          } else {
+                            updateFilter(
+                              "primaryTopics",
+                              filters.primaryTopics.filter((t) => t !== topic),
+                            )
+                          }
+                        }}
+                        className="shrink-0"
+                      />
+                      <span className="text-foreground flex-1 truncate">{formatLabel(topic)}</span>
+                      <span className="text-xs text-muted-foreground shrink-0" suppressHydrationWarning>
+                        {hydrated ? (filterCounts.primaryTopics?.[topic] || 0) : ""}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+                {sortedPrimaryTopics.length > PRIMARY_TOPIC_LIMIT && (
+                  <div className="mt-2">
+                    <Button variant="outline" size="sm" onClick={() => setShowAllPrimaryTopics((v) => !v)}>
+                      {showAllPrimaryTopics ? "Show less" : "Show more"}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Existing category tokens (secondary) */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-0.5 md:gap-1">
                 {availableCategories.map((category) => (
                   <label key={category} className="flex items-center gap-2 cursor-pointer text-xs md:text-sm hover:bg-muted/30 p-1.5 md:p-2 rounded touch-manipulation min-w-0">

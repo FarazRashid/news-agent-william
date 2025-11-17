@@ -3,7 +3,7 @@
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import type { FilterState, Article, FilterCounts } from "./types"
-import { filterArticles, calculateFilterCounts, extractCategoryTokensFromArticle } from "./filter-utils"
+import { filterArticles, calculateFilterCounts, extractCategoryTokensFromArticle, canonicalizePrimaryTopic, normalizePrimarySubtopic, tokenizePrimarySubtopic } from "./filter-utils"
 import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
 import { fetchArticlesFromSupabase } from "./articles"
 
@@ -24,6 +24,8 @@ interface NewsContextType {
   error: string | null
   refetch: () => Promise<void>
   availableCategories: string[]
+  availablePrimaryTopics: string[]
+  groupedPrimaryTopics: Array<{ main: string; subtopics: string[]; count: number }>
   availableSources: string[]
   minPublishedAt: Date | null
   maxPublishedAt: Date | null
@@ -45,6 +47,7 @@ const defaultFilters: FilterState = {
     preset: "all",
   },
   categories: [],
+  primaryTopics: [],
   entities: {
     people: [],
     companies: [],
@@ -96,8 +99,11 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     const search = searchParams.get("search")
     if (search) urlFilters.search = search
 
-    const categories = searchParams.get("categories")
-    if (categories) urlFilters.categories = categories.split(",").filter(Boolean)
+  const categories = searchParams.get("categories")
+  if (categories) urlFilters.categories = categories.split(",").filter(Boolean)
+
+  const primaryTopics = searchParams.get("primaryTopics")
+  if (primaryTopics) urlFilters.primaryTopics = primaryTopics.split(",").filter(Boolean)
 
     const sources = searchParams.get("sources")
     if (sources) urlFilters.sources = sources.split(",").filter(Boolean)
@@ -141,7 +147,8 @@ export function NewsProvider({ children }: { children: ReactNode }) {
       const params = new URLSearchParams()
 
       if (filters.search) params.set("search", filters.search)
-      if (filters.categories.length > 0) params.set("categories", filters.categories.join(","))
+  if (filters.categories.length > 0) params.set("categories", filters.categories.join(","))
+  if (filters.primaryTopics.length > 0) params.set("primaryTopics", filters.primaryTopics.join(","))
       if (filters.sources.length > 0) params.set("sources", filters.sources.join(","))
       if (filters.locations.length > 0) params.set("locations", filters.locations.join(","))
       if (filters.timeRange.preset !== "all") params.set("timeRange", filters.timeRange.preset)
@@ -258,6 +265,85 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     return Array.from(set).sort((a, b) => a.localeCompare(b))
   }, [articles])
 
+  const availablePrimaryTopics = useMemo(() => {
+    const set = new Set<string>()
+    articles?.forEach((a) => {
+      if (a.primaryTopic) set.add(a.primaryTopic)
+    })
+    return Array.from(set).sort((a, b) => a.localeCompare(b))
+  }, [articles])
+
+  const groupedPrimaryTopics = useMemo(() => {
+    const groups = new Map<string, { main: string; subtopics: Set<string>; count: number }>()
+    articles?.forEach((a) => {
+      if (!a.primaryTopic) return
+      const main = canonicalizePrimaryTopic(a.primaryTopic)
+      if (!main) return
+      const entry = groups.get(main) || { main, subtopics: new Set<string>(), count: 0 }
+      entry.subtopics.add(a.primaryTopic)
+      entry.count += 1
+      groups.set(main, entry)
+    })
+    // Dedupe similar subtopics by reducing to a canonical representative per simple stem
+    const normalize = (s: string) =>
+      s
+        .toLowerCase()
+        .replace(/\b(cost[- ]?of[- ]?living|cola)\b/g, "coladj")
+        .replace(/\badjustment(s)?\b/g, "adj")
+        .replace(/\badjustments?\b/g, "adj")
+        .replace(/\bplanning\b/g, "plan")
+        .replace(/\bretirement\b/g, "retire")
+        .replace(/\bbenefit(s)?\b/g, "benefit")
+        .replace(/\bchanges?\b/g, "change")
+        .replace(/\bstrateg(y|ies)\b/g, "strategy")
+        .replace(/\s+/g, " ")
+        .trim()
+
+    const result = Array.from(groups.values()).map(({ main, subtopics, count }) => {
+      // Build candidates with token sets ignoring common group tokens
+      const candidates = Array.from(subtopics).map((label) => {
+        const tokens = tokenizePrimarySubtopic(label)
+        return { label, key: tokens.join(" "), tokens }
+      })
+      // First pass: dedupe by identical token keys
+      const firstPassMap = new Map<string, { label: string; tokens: string[] }>()
+      for (const c of candidates) {
+        if (c.key && !firstPassMap.has(c.key)) {
+          firstPassMap.set(c.key, { label: c.label, tokens: c.tokens })
+        }
+      }
+      const firstPass = Array.from(firstPassMap.values())
+      // Second pass: subset collapse. Keep shorter (more general) token sets; drop supersets.
+      firstPass.sort((a, b) => a.tokens.length - b.tokens.length || a.label.localeCompare(b.label))
+      const kept: { label: string; tokens: string[] }[] = []
+      const keptSets: string[][] = []
+      const isSubset = (small: string[], big: string[]) => {
+        const setB = new Set(big)
+        return small.every((t) => setB.has(t))
+      }
+      for (const c of firstPass) {
+        let skip = false
+        for (const s of keptSets) {
+          if (isSubset(s, c.tokens) || isSubset(c.tokens, s)) {
+            // If either is subset of the other, prefer the smaller one already kept
+            if (s.length <= c.tokens.length) {
+              skip = s.length <= c.tokens.length
+            }
+          }
+        }
+        if (!skip) {
+          kept.push(c)
+          keptSets.push(c.tokens)
+        }
+      }
+      const deduped = kept.map((k) => k.label).sort((a, b) => a.localeCompare(b))
+      return { main, subtopics: deduped, count }
+    })
+
+    return result
+      .sort((a, b) => b.count - a.count || a.main.localeCompare(b.main))
+  }, [articles])
+
   const availableSources = useMemo(() => {
     const set = new Set<string>()
     articles?.forEach((a) => {
@@ -281,6 +367,7 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     if (filters.search) count++
     if (filters.timeRange.preset !== "all") count++
     if (filters.categories.length > 0) count++
+    if (filters.primaryTopics.length > 0) count++
     if (filters.entities.people.length > 0) count++
     if (filters.entities.companies.length > 0) count++
     if (filters.domains.length > 0) count++
@@ -307,7 +394,9 @@ export function NewsProvider({ children }: { children: ReactNode }) {
         error,
         refetch,
         availableCategories,
-        availableSources,
+        availablePrimaryTopics,
+  availableSources,
+  groupedPrimaryTopics,
         minPublishedAt : minPublishedAt || null,
         maxPublishedAt : maxPublishedAt || null,
         page: safePage,
