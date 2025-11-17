@@ -84,7 +84,7 @@ export default function ReferenceArticleCard({ refArticle }: { refArticle: Refer
           </div>
         )}
         <div className="min-w-0">
-          <div className="font-semibold h-12 text-foreground text-sm sm:text-base line-clamp-2">
+          <div className="font-semibold min-h-12 max-h-12 text-foreground text-sm sm:text-base line-clamp-2">
             {refArticle.title || refArticle.name}
           </div>
           {(refArticle.url || refArticle.domain) && (
