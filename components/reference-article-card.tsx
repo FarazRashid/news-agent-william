@@ -1,5 +1,6 @@
 import Link from "next/link"
 import Image from "next/image"
+import { ExternalLink } from "lucide-react"
 
 export type ReferenceArticle = {
   name: string
@@ -66,7 +67,7 @@ export default function ReferenceArticleCard({ refArticle }: { refArticle: Refer
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="group block bg-card border border-border rounded-lg p-4 hover:shadow-md transition-all"
+      className="group block bg-card border border-border rounded-lg p-5 hover:shadow-md transition-all"
     >
       <div className="flex items-center gap-3">
         {logoSrc ? (
@@ -83,12 +84,22 @@ export default function ReferenceArticleCard({ refArticle }: { refArticle: Refer
           </div>
         )}
         <div className="min-w-0">
-          <div className="font-medium text-foreground truncate">{refArticle.title || refArticle.name}</div>
+          <div className="font-semibold h-12 text-foreground text-sm sm:text-base line-clamp-2">
+            {refArticle.title || refArticle.name}
+          </div>
           {(refArticle.url || refArticle.domain) && (
-            <div className="text-xs w-70 text-muted-foreground truncate">{prettyUrl(refArticle.url, refArticle.domain)}</div>
+            <div
+              className="text-xs text-muted-foreground break-all"
+              title={prettyUrl(refArticle.url, refArticle.domain)}
+            >
+              {prettyUrl(refArticle.url, refArticle.domain)}
+            </div>
           )}
         </div>
-        <span className="ml-auto text-xs text-primary group-hover:underline">Open original →</span>
+        <span className="ml-auto inline-flex items-center gap-1 text-xs text-primary group-hover:underline whitespace-nowrap">
+          Open original
+          <ExternalLink className="w-3.5 h-3.5" />
+        </span>
       </div>
     </Link>
   )

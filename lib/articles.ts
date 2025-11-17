@@ -210,7 +210,7 @@ function collectAllSources(sources: unknown | null): { name: string; domain: str
       return title
     } catch { return undefined }
   }
-  const tryFromUrl = (urlStr: string, explicitName?: string | null) => {
+  const tryFromUrl = (urlStr: string, explicitName?: string | null, explicitTitle?: string | null) => {
     try {
       const u = new URL(urlStr.trim())
       const originalDomain = u.hostname
@@ -218,18 +218,18 @@ function collectAllSources(sources: unknown | null): { name: string; domain: str
       const base = domain.replace(/^www\./, "").split(".")[0]
       const derived = base ? base.charAt(0).toUpperCase() + base.slice(1) : "Unknown"
       const name = explicitName?.trim() || derived
-      const title = deriveTitle(urlStr)
+      const title = (explicitTitle && String(explicitTitle).trim()) || deriveTitle(urlStr)
       pushUnique(name, domain, urlStr, title)
     } catch {
       const name = urlStr.trim()
-      if (name) pushUnique(name, "", urlStr, deriveTitle(urlStr))
+      if (name) pushUnique(name, "", urlStr, (explicitTitle && String(explicitTitle).trim()) || deriveTitle(urlStr))
     }
   }
   const normalizeObj = (obj: any) => {
     if (!obj || typeof obj !== "object") return
     const urlField = obj.url || obj.link || obj.href || obj.website
-    if (typeof urlField === "string") {
-      tryFromUrl(urlField, obj.name || obj.source || obj.publisher)
+    if (typeof urlField === "string" && urlField.trim()) {
+      tryFromUrl(urlField, obj.name || obj.source || obj.publisher, obj.contribution || obj.title)
       return
     }
     let domain: string = ""
@@ -245,7 +245,7 @@ function collectAllSources(sources: unknown | null): { name: string; domain: str
     const rawName = obj.name || obj.source || obj.publisher || domain.replace(/^www\./, '').split('.')[0]
     if (rawName) {
       const name = typeof rawName === 'string' ? rawName.trim() : String(rawName)
-      if (name) pushUnique(name.charAt(0).toUpperCase() + name.slice(1), domain)
+      if (name) pushUnique(name.charAt(0).toUpperCase() + name.slice(1), domain, undefined, obj.contribution || obj.title)
     }
   }
   const recurse = (val: any) => {

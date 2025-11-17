@@ -237,11 +237,14 @@ export default function NewsFeed() {
                 {latestSummaryArticle && latestSummaryArticle.originalSources && latestSummaryArticle.originalSources.length > 0 && (
                   <div className="space-y-3">
                     <h3 className="text-lg font-semibold text-foreground">Reference Articles</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3">
                       {latestSummaryArticle.originalSources
                         .filter((s) => !!s.url)
                         .map((s, idx) => (
-                          <ReferenceArticleCard key={`${s.url}-${idx}`} refArticle={{ name: s.name, url: s.url, domain: s.domain }} />
+                          <ReferenceArticleCard
+                            key={`${s.url}-${idx}`}
+                            refArticle={{ name: s.name, url: s.url, domain: s.domain, title: s.title }}
+                          />
                         ))}
                     </div>
                   </div>
