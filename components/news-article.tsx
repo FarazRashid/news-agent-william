@@ -98,7 +98,7 @@ export default function NewsArticle({ article }: { article: Article }) {
             {article.publishedAt.toLocaleDateString("en-US", {
               month: "short",
               day: "numeric",
-              year: "2-digit",
+              year: "numeric",
               timeZone: "UTC",
             })}
           </span>

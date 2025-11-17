@@ -66,10 +66,11 @@ function parseSources(sources: unknown | null): { name: string; domain: string }
   const fromUrl = (urlStr: string, explicitName?: string | null): { name: string; domain: string } | null => {
     try {
       const u = new URL(urlStr.trim())
-      const domain = u.hostname
-      const base = domain.replace(/^www\./, "").split(".")[0]
+      const originalDomain = u.hostname
+      const base = originalDomain.replace(/^www\./, "").split(".")[0]
       const derived = base ? base.charAt(0).toUpperCase() + base.slice(1) : "Unknown"
       const name = explicitName?.trim() || derived
+      const domain = /^(example\.com|localhost)$/i.test(originalDomain) ? "" : originalDomain
       return { name, domain }
     } catch {
       return null
@@ -165,6 +166,7 @@ function parseSources(sources: unknown | null): { name: string; domain: string }
           domain = rawDomain.trim()
         }
       }
+      if (domain && /^(example\.com|localhost)$/i.test(domain)) domain = ""
   domain = domain || ""
 
       // Name fallback precedence
@@ -183,8 +185,101 @@ function parseSources(sources: unknown | null): { name: string; domain: string }
   return null
 }
 
+// Collect all potential source entries (names/domains) instead of just representative one
+function collectAllSources(sources: unknown | null): { name: string; domain: string; url?: string; title?: string }[] {
+  if (!sources) return []
+  const results: { name: string; domain: string; url?: string; title?: string }[] = []
+  const pushUnique = (name: string, domain: string, url?: string, title?: string) => {
+    const key = (url || domain || name).toLowerCase()
+    if (!key) return
+    if (!results.some(r => (r.url || r.domain || r.name).toLowerCase() === key)) {
+      results.push({ name, domain, url, title })
+    }
+  }
+  const deriveTitle = (urlStr: string): string | undefined => {
+    try {
+      const u = new URL(urlStr)
+      let segment = u.pathname.split('/').filter(Boolean).pop() || ''
+      if (!segment) return undefined
+      segment = segment.replace(/\.(html?|php|aspx?)$/i, '')
+      // Remove trailing date fragments if present (e.g., ...-2025-10-30)
+      segment = segment.replace(/-?\d{4}-\d{2}-\d{2}$/,'')
+      const words = segment.split(/[-_]+/).filter(w => w && w.length > 0)
+      if (!words.length) return undefined
+      const title = words.map(w => w.length <= 3 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
+      return title
+    } catch { return undefined }
+  }
+  const tryFromUrl = (urlStr: string, explicitName?: string | null) => {
+    try {
+      const u = new URL(urlStr.trim())
+      const originalDomain = u.hostname
+      const domain = /^(example\.com|localhost)$/i.test(originalDomain) ? "" : originalDomain
+      const base = domain.replace(/^www\./, "").split(".")[0]
+      const derived = base ? base.charAt(0).toUpperCase() + base.slice(1) : "Unknown"
+      const name = explicitName?.trim() || derived
+      const title = deriveTitle(urlStr)
+      pushUnique(name, domain, urlStr, title)
+    } catch {
+      const name = urlStr.trim()
+      if (name) pushUnique(name, "", urlStr, deriveTitle(urlStr))
+    }
+  }
+  const normalizeObj = (obj: any) => {
+    if (!obj || typeof obj !== "object") return
+    const urlField = obj.url || obj.link || obj.href || obj.website
+    if (typeof urlField === "string") {
+      tryFromUrl(urlField, obj.name || obj.source || obj.publisher)
+      return
+    }
+    let domain: string = ""
+    const rawDomain = obj.domain || obj.hostname
+    if (typeof rawDomain === "string" && rawDomain.trim()) {
+      try {
+        domain = rawDomain.includes("/") ? new URL(rawDomain).hostname : rawDomain.trim()
+      } catch {
+        domain = rawDomain.trim()
+      }
+    }
+    if (domain && /^(example\.com|localhost)$/i.test(domain)) domain = ""
+    const rawName = obj.name || obj.source || obj.publisher || domain.replace(/^www\./, '').split('.')[0]
+    if (rawName) {
+      const name = typeof rawName === 'string' ? rawName.trim() : String(rawName)
+      if (name) pushUnique(name.charAt(0).toUpperCase() + name.slice(1), domain)
+    }
+  }
+  const recurse = (val: any) => {
+    if (!val) return
+    if (typeof val === 'string') {
+      // JSON attempt
+      const trimmed = val.trim()
+      if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+        try { val = JSON.parse(trimmed) } catch { /* keep as string */ }
+      }
+    }
+    if (typeof val === 'string') {
+      tryFromUrl(val)
+      return
+    }
+    if (Array.isArray(val)) {
+      for (const el of val) recurse(el)
+      return
+    }
+    if (typeof val === 'object') {
+      // Check composite lists
+      const lists = [val.primary_sources, val.secondary_sources, val.sources]
+      lists.forEach(list => { if (Array.isArray(list)) list.forEach(item => recurse(item)) })
+      normalizeObj(val)
+      return
+    }
+  }
+  recurse(sources)
+  return results
+}
+
 export function mapArticleRowToArticle(row: ArticleRow): Article {
   let source = parseSources(row.sources)
+  const allSources = collectAllSources(row.sources)
   // Fallback: derive domain from post_url if available
   if (!source) {
   let domain = ""
@@ -192,6 +287,7 @@ export function mapArticleRowToArticle(row: ArticleRow): Article {
       if (row.post_url) {
         const u = new URL(row.post_url)
         domain = u.hostname || domain
+        if (domain && /^(example\.com|localhost)$/i.test(domain)) domain = ""
       }
     } catch {}
     // Derive a readable name from domain
@@ -266,10 +362,11 @@ export function mapArticleRowToArticle(row: ArticleRow): Article {
     conclusion: row.conclusion ?? null,
     image,
     imageSuggestions,
+    // Override display source name/logo with AI agent branding, retain original via originalSourceName
     source: {
-      name: source.name,
+      name: "William AI",
       domain: source.domain,
-      logo,
+      logo: "W",
     },
     publishedAt: new Date(publishedAtISO),
     category: (row.category ?? "Uncategorized").trim(),
@@ -293,6 +390,8 @@ export function mapArticleRowToArticle(row: ArticleRow): Article {
     focusKeyword: row.focus_keyword ?? null,
     relatedKeywords: row.related_keywords ?? null,
     readabilityScore: row.readability_score ?? null,
+    originalSources: allSources,
+    originalSourceName: source.name,
   }
 }
 

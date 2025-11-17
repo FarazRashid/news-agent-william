@@ -15,7 +15,7 @@ export default function Home() {
             <div className="flex">
               <FiltersSidebar />
               <NewsFeed />
-              <EngagementWidgets />
+              {/* <EngagementWidgets /> */}
             </div>
           </div>
         </SidebarProvider>

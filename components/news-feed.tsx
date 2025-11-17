@@ -11,6 +11,7 @@ import { ActiveFiltersChips } from "./active-filters-chips"
 import { MobileFilterSheet } from "./mobile-filter-sheet"
 import { SortDropdown } from "./sort-dropdown"
 import { Button } from "./ui/button"
+import ReferenceArticleCard from "./reference-article-card"
 import {
   Pagination,
   PaginationContent,
@@ -59,20 +60,8 @@ export default function NewsFeed() {
   }, [filters.primaryTopics])
 
   const groupedArticles = useMemo(() => {
-    const groups: Record<string, typeof filteredArticles> = {}
-    paginatedArticles.forEach((article) => {
-      const dateStr = article.publishedAt.toLocaleDateString("en-US", {
-        year: "numeric",
-        month: "long",
-        day: "numeric",
-        timeZone: "UTC",
-      })
-      if (!groups[dateStr]) {
-        groups[dateStr] = []
-      }
-      groups[dateStr].push(article)
-    })
-    return groups
+    // Deprecated date grouping; retaining hook structure if needed for future grouping strategies
+    return {}
   }, [paginatedArticles])
 
   const handlePrimaryTopicClick = (topic: string) => {
@@ -109,6 +98,14 @@ export default function NewsFeed() {
     const cleaned = grp.subtopics.filter((s) => normalizePrimarySubtopic(s) !== mainNorm)
     return cleaned.slice(0, 15)
   }, [selectedPrimaryTopic, groupedPrimaryTopics])
+
+  // When a topic is selected, show latest summary article for that topic
+  const latestSummaryArticle = useMemo(() => {
+    if (!selectedPrimaryTopic || selectedPrimaryTopic === "All") return null
+    if (!filteredArticles || filteredArticles.length === 0) return null
+    const sorted = [...filteredArticles].sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
+    return sorted[0]
+  }, [filteredArticles, selectedPrimaryTopic])
 
   return (
     <main className="flex-1 border-r border-border bg-background min-h-[calc(100vh-73px)]">
@@ -184,7 +181,7 @@ export default function NewsFeed() {
                 </button>
               )}
             </div>
-            {selectedPrimaryTopic && selectedPrimaryTopic !== "All" && relatedTopics.length > 0 && (
+            {/* {selectedPrimaryTopic && selectedPrimaryTopic !== "All" && relatedTopics.length > 0 && (
               <div className="mb-4">
                 <div className="text-xs text-muted-foreground mb-2">More under {formatLabel(selectedPrimaryTopic)}:</div>
                 <div className="flex flex-wrap gap-2">
@@ -204,7 +201,7 @@ export default function NewsFeed() {
                   ))}
                 </div>
               </div>
-            )}
+            )} */}
             <div className="flex items-center gap-2">
               <select
                 value={sortOrder}
@@ -224,39 +221,66 @@ export default function NewsFeed() {
       <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
         {loading ? (
           <ArticleListSkeleton count={7} />
-        ) : Object.keys(groupedArticles).length > 0 ? (
-          <div className="space-y-8">
-            {Object.entries(groupedArticles).map(([dateStr, articles]) => (
-              <div key={dateStr}>
-                <h2 className="text-xl font-semibold text-foreground mb-5">{dateStr}</h2>
+        ) : paginatedArticles.length > 0 ? (
+          <div className="space-y-6">
+            {selectedPrimaryTopic !== "All" ? (
+              <>
+                <h2 className="text-xl font-semibold text-foreground">AI Generated Summary Article</h2>
+                {latestSummaryArticle ? (
+                  <div className="space-y-5">
+                    <NewsArticle key={latestSummaryArticle.id} article={latestSummaryArticle} />
+                  </div>
+                ) : (
+                  <div className="text-sm text-muted-foreground">No summary available for this topic.</div>
+                )}
+                {/* Reference Articles */}
+                {latestSummaryArticle && latestSummaryArticle.originalSources && latestSummaryArticle.originalSources.length > 0 && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-foreground">Reference Articles</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {latestSummaryArticle.originalSources
+                        .filter((s) => !!s.url)
+                        .map((s, idx) => (
+                          <ReferenceArticleCard key={`${s.url}-${idx}`} refArticle={{ name: s.name, url: s.url, domain: s.domain }} />
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            ) : (
+              <>
+                <h2 className="text-xl font-semibold text-foreground">AI Generated Summary Articles</h2>
                 <div className="space-y-5">
-                  {articles.map((article) => (
+                  {paginatedArticles.map((article) => (
                     <NewsArticle key={article.id} article={article} />
                   ))}
                 </div>
-              </div>
-            ))}
-            <div className="text-center py-4 text-muted-foreground text-sm">
-              Page {page} of {totalPages} — {filteredArticles.length} article{filteredArticles.length !== 1 ? "s" : ""} total
-            </div>
-            <Pagination className="mt-2">
-              <PaginationContent>
-                <PaginationItem>
-                  <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1) }} />
-                </PaginationItem>
-                {/* show a compact set of page links */}
-                {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, page - 3), Math.max(0, page - 3) + 5).map((p) => (
-                  <PaginationItem key={p}>
-                    <PaginationLink href="#" isActive={p === page} onClick={(e) => { e.preventDefault(); setPage(p) }}>
-                      {p}
-                    </PaginationLink>
-                  </PaginationItem>
-                ))}
-                <PaginationItem>
-                  <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (page < totalPages) setPage(page + 1) }} />
-                </PaginationItem>
-              </PaginationContent>
-            </Pagination>
+              </>
+            )}
+            {selectedPrimaryTopic === "All" && (
+              <>
+                <div className="text-center py-4 text-muted-foreground text-sm">
+                  Page {page} of {totalPages} — {filteredArticles.length} article{filteredArticles.length !== 1 ? "s" : ""} total
+                </div>
+                <Pagination className="mt-2">
+                  <PaginationContent>
+                    <PaginationItem>
+                      <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (page > 1) setPage(page - 1) }} />
+                    </PaginationItem>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).slice(Math.max(0, page - 3), Math.max(0, page - 3) + 5).map((p) => (
+                      <PaginationItem key={p}>
+                        <PaginationLink href="#" isActive={p === page} onClick={(e) => { e.preventDefault(); setPage(p) }}>
+                          {p}
+                        </PaginationLink>
+                      </PaginationItem>
+                    ))}
+                    <PaginationItem>
+                      <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (page < totalPages) setPage(page + 1) }} />
+                    </PaginationItem>
+                  </PaginationContent>
+                </Pagination>
+              </>
+            )}
           </div>
         ) : (
           <div className="text-center py-12 text-muted-foreground">

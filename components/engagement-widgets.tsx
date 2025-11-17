@@ -82,95 +82,97 @@ export default function EngagementWidgets() {
       )}
 
       {/* Expanded state - full sidebar */}
-      {!isRightCollapsed && (
-        <aside className="hidden xl:flex flex-col w-80 border-l border-border bg-card overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-4 py-4 border-b border-border">
-            <h2 className="font-semibold text-foreground text-base">Insights</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleRightSidebar}
-              className="h-8 w-8"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto p-6">
-            {/* Related Topics */}
-            <div className="mb-8">
-              <h3 className="font-semibold text-foreground mb-4 text-sm">Related Topics</h3>
-              <div className="space-y-2">
-                {relatedTopics.map(([topic, count]) => (
-                  <div
-                    key={topic}
-                    onClick={() => {
-                      // Add topic filter logic if needed
-                    }}
-                    className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
-                  >
-                    <span className="text-foreground">{topic}</span>
-                    <span className="text-muted-foreground font-medium">{count}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Trending Publishers */}
-            <div className="mb-8">
-              <h3 className="font-semibold text-foreground mb-4 text-sm">Trending Publishers</h3>
-              <div className="space-y-2">
-                {trendingPublishers.map((publisher) => (
-                  <div
-                    key={publisher.name}
-                    onClick={() => {
-                      updateFilter("sources", [publisher.name])
-                    }}
-                    className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                        {publisher.name.charAt(0)}
-                      </div>
-                      <span className="text-foreground">{publisher.name}</span>
-                    </div>
-                    <span className="font-medium text-sm text-success">{publisher.percentage}%</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Trending Sources */}
-            <div>
-              <h3 className="font-semibold text-foreground mb-4 text-sm">Trending Sources</h3>
-              <div className="space-y-2">
-                {trendingSources.map((source) => (
-                  <div
-                    key={source.domain}
-                    onClick={() => {
-                      updateFilter("sources", [...filters.sources, source.domain])
-                    }}
-                    className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                        {source.domain.charAt(0).toUpperCase()}
-                      </div>
-                      <span className="text-foreground">{source.domain}</span>
-                    </div>
-                    <span className={`font-medium text-sm ${source.change > 0 ? "text-success" : "text-error"}`}>
-                      {source.change > 0 ? "+" : ""}
-                      {source.change}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </aside>
-      )}
+     
     </>
   )
-}
+  {
+    !isRightCollapsed && (
+      <aside className="hidden xl:flex flex-col w-80 border-l border-border bg-card overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+          <h2 className="font-semibold text-foreground text-base">Insights</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleRightSidebar}
+            className="h-8 w-8"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto p-6">
+          {/* Related Topics */}
+          <div className="mb-8">
+            <h3 className="font-semibold text-foreground mb-4 text-sm">Related Topics</h3>
+            <div className="space-y-2">
+              {relatedTopics.map(([topic, count]) => (
+                <div
+                  key={topic}
+                  onClick={() => {
+                    // Add topic filter logic if needed
+                  }}
+                  className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
+                >
+                  <span className="text-foreground">{topic}</span>
+                  <span className="text-muted-foreground font-medium">{count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Trending Publishers */}
+          <div className="mb-8">
+            <h3 className="font-semibold text-foreground mb-4 text-sm">Trending Publishers</h3>
+            <div className="space-y-2">
+              {trendingPublishers.map((publisher) => (
+                <div
+                  key={publisher.name}
+                  onClick={() => {
+                    updateFilter("sources", [publisher.name])
+                  }}
+                  className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                      {publisher.name.charAt(0)}
+                    </div>
+                    <span className="text-foreground">{publisher.name}</span>
+                  </div>
+                  <span className="font-medium text-sm text-success">{publisher.percentage}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Trending Sources */}
+          <div>
+            <h3 className="font-semibold text-foreground mb-4 text-sm">Trending Sources</h3>
+            <div className="space-y-2">
+              {trendingSources.map((source) => (
+                <div
+                  key={source.domain}
+                  onClick={() => {
+                    updateFilter("sources", [...filters.sources, source.domain])
+                  }}
+                  className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+                      {source.domain.charAt(0).toUpperCase()}
+                    </div>
+                    <span className="text-foreground">{source.domain}</span>
+                  </div>
+                  <span className={`font-medium text-sm ${source.change > 0 ? "text-success" : "text-error"}`}>
+                    {source.change > 0 ? "+" : ""}
+                    {source.change}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </aside>
+    )
+  }  }

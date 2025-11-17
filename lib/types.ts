@@ -36,6 +36,10 @@ export type Article = {
   focusKeyword?: string | null
   relatedKeywords?: string[] | null
   readabilityScore?: string | null
+  // Full list of parsed original sources (if multiple were present) for attribution and linking
+  originalSources?: { name: string; domain: string; url?: string; title?: string }[]
+  // Original single representative source name before overriding with AI agent (for internal/reference)
+  originalSourceName?: string
 }
 
 export type FilterState = {
