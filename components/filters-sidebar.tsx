@@ -550,36 +550,7 @@ export default function FiltersSidebar() {
       </div>
 
       {/* Chat Interface at Bottom */}
-      <div className="border-t border-border bg-muted/30">
-        <div className="p-2 md:p-3">
-          <div className="flex items-center gap-1.5 md:gap-2 mb-1.5 md:mb-2">
-            <MessageSquare className="w-3.5 md:w-4 h-3.5 md:h-4 text-muted-foreground shrink-0" />
-            <span className="text-xs md:text-sm font-medium truncate">Ask about filters</span>
-          </div>
-          <div className="flex gap-1.5 md:gap-2">
-            <Textarea
-              placeholder="e.g., Show me tech news..."
-              value={chatMessage}
-              onChange={(e) => setChatMessage(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault()
-                  handleSendMessage()
-                }
-              }}
-              className="text-xs md:text-sm resize-none h-16 md:h-20"
-            />
-            <Button 
-              size="icon" 
-              onClick={handleSendMessage}
-              disabled={!chatMessage.trim()}
-              className="shrink-0 h-8 w-8 md:h-10 md:w-10"
-            >
-              <Send className="w-3.5 md:w-4 h-3.5 md:h-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
+      
         </aside>
       )}
     </>

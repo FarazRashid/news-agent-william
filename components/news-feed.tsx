@@ -43,6 +43,9 @@ export default function NewsFeed() {
   const [filtersOpen, setFiltersOpen] = useState(true)
   const [showAllTopics, setShowAllTopics] = useState(false)
   const [selectedSubtopic, setSelectedSubtopic] = useState<string | null>(null)
+  const [olderShown, setOlderShown] = useState<number>(0)
+  const [showAllOlder, setShowAllOlder] = useState<boolean>(false)
+  const [olderPage, setOlderPage] = useState<number>(1)
 
   const formatLabel = (s: string) =>
     s
@@ -105,6 +108,13 @@ export default function NewsFeed() {
     if (!filteredArticles || filteredArticles.length === 0) return null
     const sorted = [...filteredArticles].sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
     return sorted[0]
+  }, [filteredArticles, selectedPrimaryTopic])
+
+  const olderArticles = useMemo(() => {
+    if (!selectedPrimaryTopic || selectedPrimaryTopic === "All") return [] as typeof filteredArticles
+    if (!filteredArticles || filteredArticles.length <= 1) return [] as typeof filteredArticles
+    const sorted = [...filteredArticles].sort((a, b) => b.publishedAt.getTime() - a.publishedAt.getTime())
+    return sorted.slice(1)
   }, [filteredArticles, selectedPrimaryTopic])
 
   return (
@@ -247,6 +257,78 @@ export default function NewsFeed() {
                           />
                         ))}
                     </div>
+                  </div>
+                )}
+
+                {/* Older Summaries Progressive Reveal */}
+                {olderArticles.length > 0 && !showAllOlder && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-foreground">Older Summaries</h3>
+                    {olderShown > 0 && (
+                      <div className="space-y-5">
+                        {olderArticles.slice(0, olderShown).map((article) => (
+                          <NewsArticle key={article.id} article={article} />
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                      {olderShown < olderArticles.length && (
+                        <Button variant="outline" size="sm" onClick={() => setOlderShown((n) => Math.min(n + 2, olderArticles.length))}>
+                          View older
+                        </Button>
+                      )}
+                      {olderShown >= 4 && olderShown < olderArticles.length && (
+                        <Button variant="ghost" size="sm" onClick={() => { setShowAllOlder(true); setOlderPage(1) }}>
+                          Show all
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Older Summaries - Full List with Pagination */}
+                {olderArticles.length > 0 && showAllOlder && (
+                  <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-foreground">Older Summaries</h3>
+                    {(() => {
+                      const pageSize = 7
+                      const totalPages = Math.max(1, Math.ceil(olderArticles.length / pageSize))
+                      const safePage = Math.min(olderPage, totalPages)
+                      const start = (safePage - 1) * pageSize
+                      const end = start + pageSize
+                      const pageItems = olderArticles.slice(start, end)
+                      return (
+                        <>
+                          <div className="space-y-5">
+                            {pageItems.map((article) => (
+                              <NewsArticle key={article.id} article={article} />
+                            ))}
+                          </div>
+                          <div className="text-center py-2 text-muted-foreground text-xs">
+                            Page {safePage} of {totalPages} — {olderArticles.length} older article{olderArticles.length !== 1 ? "s" : ""}
+                          </div>
+                          <Pagination className="mt-2">
+                            <PaginationContent>
+                              <PaginationItem>
+                                <PaginationPrevious href="#" onClick={(e) => { e.preventDefault(); if (safePage > 1) setOlderPage(safePage - 1) }} />
+                              </PaginationItem>
+                              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                                .slice(Math.max(0, safePage - 3), Math.max(0, safePage - 3) + 5)
+                                .map((p) => (
+                                  <PaginationItem key={p}>
+                                    <PaginationLink href="#" isActive={p === safePage} onClick={(e) => { e.preventDefault(); setOlderPage(p) }}>
+                                      {p}
+                                    </PaginationLink>
+                                  </PaginationItem>
+                                ))}
+                              <PaginationItem>
+                                <PaginationNext href="#" onClick={(e) => { e.preventDefault(); if (safePage < totalPages) setOlderPage(safePage + 1) }} />
+                              </PaginationItem>
+                            </PaginationContent>
+                          </Pagination>
+                        </>
+                      )
+                    })()}
                   </div>
                 )}
               </>
