@@ -151,7 +151,7 @@ export function ExplorePage() {
                         <div className="flex flex-wrap gap-2 mb-4">
 
                             {trendingTopics.slice(0, 20).map((topic, idx) => (
-                                <Link key={idx} href={`/feed?topic=${encodeURIComponent(topic)}`}>
+                                <Link key={idx} href={`/feed?primaryTopics=${encodeURIComponent(topic)}`}>
                                     <Badge
                                         variant="secondary"
                                         className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize rounded-full"
@@ -182,7 +182,7 @@ export function ExplorePage() {
                                     {category.topics.map((topic, topicIdx) => (
                                         <Link
                                             key={topicIdx}
-                                            href={`/feed?topic=${encodeURIComponent(topic)}`}
+                                            href={`/feed?primaryTopics=${encodeURIComponent(topic)}`}
                                             className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
                                         >
                                             {topic}
