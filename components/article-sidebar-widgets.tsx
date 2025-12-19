@@ -170,7 +170,7 @@ export function CompaniesTagsWidget({ companies, topics, primaryTopic }: Compani
       {primaryTopic && (
         <div className="mb-3">
           <p className="text-xs text-muted-foreground mb-1">Primary Topic</p>
-          <Badge variant="default" className="capitalize">
+          <Badge variant="default" className="capitalize text-xs break-words whitespace-normal">
             {primaryTopic}
           </Badge>
         </div>

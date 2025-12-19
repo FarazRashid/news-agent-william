@@ -40,13 +40,14 @@ export function ArticleNavigation({ trendingTags = [] }: ArticleNavProps) {
           <div className="hidden lg:flex items-center gap-2 overflow-x-auto max-w-md scrollbar-hide">
             <TrendingUp className="w-4 h-4 text-muted-foreground shrink-0" />
             {trendingTags.slice(0, 4).map((tag, idx) => (
-              <Badge 
-                key={idx} 
-                variant="secondary" 
-                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize whitespace-nowrap"
-              >
-                {tag}
-              </Badge>
+              <Link key={idx} href={`/?topic=${encodeURIComponent(tag)}`}>
+                <Badge 
+                  variant="secondary" 
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize whitespace-nowrap"
+                >
+                  {tag}
+                </Badge>
+              </Link>
             ))}
           </div>
 
@@ -78,13 +79,14 @@ export function ArticleNavigation({ trendingTags = [] }: ArticleNavProps) {
         <div className="flex items-center gap-2">
           <TrendingUp className="w-3 h-3 text-muted-foreground shrink-0" />
           {trendingTags.slice(0, 6).map((tag, idx) => (
-            <Badge 
-              key={idx} 
-              variant="secondary" 
-              className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize whitespace-nowrap"
-            >
-              {tag}
-            </Badge>
+            <Link key={idx} href={`/?topic=${encodeURIComponent(tag)}`}>
+              <Badge 
+                variant="secondary" 
+                className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize whitespace-nowrap"
+              >
+                {tag}
+              </Badge>
+            </Link>
           ))}
         </div>
       </div>

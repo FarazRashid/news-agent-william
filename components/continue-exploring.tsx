@@ -27,20 +27,23 @@ export function ContinueExploring({
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Related Topics */}
-        <Card className="p-5">
-          <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wide">
-            Related Topics
-          </h3>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {trendingTopics.slice(0, 6).map((topic, idx) => (
-              <Badge 
-                key={idx} 
-                variant="secondary" 
-                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
-              >
-                {topic}
-              </Badge>
-            ))}
+        <Card className="p-5 flex flex-col">
+          <div className="flex-1">
+            <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wide">
+              Related Topics
+            </h3>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {trendingTopics.slice(0, 6).map((topic, idx) => (
+                <Link key={idx} href={`/?topic=${encodeURIComponent(topic)}`}>
+                  <Badge 
+                    variant="secondary" 
+                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
+                  >
+                    {topic}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
           </div>
           <Button variant="outline" size="sm" className="w-full" asChild>
             <Link href="/">
@@ -50,20 +53,23 @@ export function ContinueExploring({
         </Card>
 
         {/* Trending Sectors */}
-        <Card className="p-5">
-          <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wide">
-            Trending Sectors
-          </h3>
-          <div className="flex flex-wrap gap-2 mb-4">
-            {suggestedSectors.slice(0, 6).map((sector, idx) => (
-              <Badge 
-                key={idx} 
-                variant="outline" 
-                className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
-              >
-                {sector}
-              </Badge>
-            ))}
+        <Card className="p-5 flex flex-col">
+          <div className="flex-1">
+            <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wide">
+              Trending Sectors
+            </h3>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {suggestedSectors.slice(0, 6).map((sector, idx) => (
+                <Link key={idx} href={`/?category=${encodeURIComponent(sector)}`}>
+                  <Badge 
+                    variant="outline" 
+                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
+                  >
+                    {sector}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
           </div>
           <Button variant="outline" size="sm" className="w-full" asChild>
             <Link href="/">
@@ -73,22 +79,24 @@ export function ContinueExploring({
         </Card>
 
         {/* Suggested Deep-Dives */}
-        <Card className="p-5">
-          <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wide">
-            Suggested Articles
-          </h3>
-          <div className="space-y-3 mb-4">
-            {relatedArticles.slice(0, 3).map((article) => (
-              <Link
-                key={article.id}
-                href={`/article/${article.id}`}
-                className="block group"
-              >
-                <p className="text-sm font-medium leading-tight group-hover:text-primary transition-colors line-clamp-2">
-                  {article.title}
-                </p>
-              </Link>
-            ))}
+        <Card className="p-5 flex flex-col">
+          <div className="flex-1">
+            <h3 className="font-semibold mb-4 text-sm text-muted-foreground uppercase tracking-wide">
+              Suggested Articles
+            </h3>
+            <div className="space-y-3 mb-4">
+              {relatedArticles.slice(0, 3).map((article) => (
+                <Link
+                  key={article.id}
+                  href={`/article/${article.id}`}
+                  className="block group"
+                >
+                  <p className="text-sm font-medium leading-tight group-hover:text-primary transition-colors line-clamp-2">
+                    {article.title}
+                  </p>
+                </Link>
+              ))}
+            </div>
           </div>
           <Button variant="outline" size="sm" className="w-full" asChild>
             <Link href="/">

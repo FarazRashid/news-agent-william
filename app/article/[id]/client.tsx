@@ -94,11 +94,26 @@ export default function ArticleClient({ id }: { id: string }) {
   }), [article])
 
   const trendingTags = useMemo(() => {
-    const allTopics = relatedArticles.flatMap(a => a.topics)
-    const topicCounts = allTopics.reduce((acc, topic) => {
-      acc[topic] = (acc[topic] || 0) + 1
+    const allTopics = relatedArticles
+      .flatMap(a => a.topics)
+      .map(t => t.trim())
+      .filter(t => t.length > 0)
+    
+    // Use case-insensitive deduplication
+    const seen = new Map<string, string>()
+    allTopics.forEach(topic => {
+      const lowerTopic = topic.toLowerCase()
+      if (!seen.has(lowerTopic)) {
+        seen.set(lowerTopic, topic)
+      }
+    })
+    
+    const uniqueTopics = Array.from(seen.values())
+    const topicCounts = uniqueTopics.reduce((acc, topic) => {
+      acc[topic] = allTopics.filter(t => t.toLowerCase() === topic.toLowerCase()).length
       return acc
     }, {} as Record<string, number>)
+    
     return Object.entries(topicCounts)
       .sort((a, b) => b[1] - a[1])
       .map(([topic]) => topic)
@@ -106,8 +121,12 @@ export default function ArticleClient({ id }: { id: string }) {
   }, [relatedArticles])
 
   const suggestedSectors = useMemo(() => {
-    const categories = relatedArticles.map(a => a.category).filter(Boolean)
-    return Array.from(new Set(categories)).slice(0, 6)
+    const allCategories = relatedArticles
+      .map(a => a.category)
+      .filter(Boolean)
+      .flatMap(cat => cat.split('/'))
+      .map(s => s.trim())
+    return Array.from(new Set(allCategories)).slice(0, 6)
   }, [relatedArticles])
 
   if (loading) {
