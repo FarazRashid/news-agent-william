@@ -67,38 +67,30 @@ export default function ReferenceArticleCard({ refArticle }: { refArticle: Refer
       href={href}
       target="_blank"
       rel="noreferrer noopener"
-      className="group block bg-card border border-border rounded-lg p-5 hover:shadow-md transition-all"
+      className="group block bg-card border border-border rounded-lg p-3 hover:shadow-md transition-all"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5">
         {logoSrc ? (
           <Image
             src={logoSrc}
             alt={refArticle.name}
-            width={36}
-            height={36}
-            className="w-9 h-9 rounded-full object-cover border border-border"
+            width={28}
+            height={28}
+            className="w-7 h-7 rounded-full object-cover border border-border"
           />
         ) : (
-          <div className="w-9 h-9 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-semibold">
+          <div className="w-7 h-7 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
             {initial}
           </div>
         )}
-        <div className="min-w-0">
-          <div className="font-semibold min-h-12 max-h-12 text-foreground text-sm sm:text-base line-clamp-2">
+        <div className="min-w-0 flex-1">
+          <div className="font-medium text-foreground text-sm line-clamp-1">
             {refArticle.title || refArticle.name}
           </div>
-          {(refArticle.url || refArticle.domain) && (
-            <div
-              className="text-xs text-muted-foreground break-all"
-              title={prettyUrl(refArticle.url, refArticle.domain)}
-            >
-              {prettyUrl(refArticle.url, refArticle.domain)}
-            </div>
-          )}
         </div>
         <span className="ml-auto inline-flex items-center gap-1 text-xs text-primary group-hover:underline whitespace-nowrap">
-          Open original
-          <ExternalLink className="w-3.5 h-3.5" />
+          Open
+          <ExternalLink className="w-3 h-3" />
         </span>
       </div>
     </Link>

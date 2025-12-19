@@ -1,19 +1,34 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import ReactMarkdown from "react-markdown"
+import remarkGfm from "remark-gfm"
 import type { Article } from "@/lib/types"
 import { formatDate } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { ArrowLeft } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Clock, Eye, TrendingUp } from "lucide-react"
 import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
-import { fetchArticleById } from "@/lib/articles"
+import { fetchArticleById, fetchArticlesFromSupabase } from "@/lib/articles"
 import { ArticleMetadata, ArticleSEOKeywords } from "@/components/article-metadata"
+import { ArticleContextBlock } from "@/components/article-context-block"
+import { ArticleKeyInsights } from "@/components/article-key-insights"
+import { ArticleNavigation } from "@/components/article-navigation"
+import { 
+  TrendingStoriesWidget, 
+  SourcesUsedWidget, 
+  StoryStatsWidget,
+  CompaniesTagsWidget,
+  StoryHistoryWidget 
+} from "@/components/article-sidebar-widgets"
+import { ContinueExploring } from "@/components/continue-exploring"
 
 export default function ArticleClient({ id }: { id: string }) {
   const [article, setArticle] = useState<Article | null>(null)
+  const [relatedArticles, setRelatedArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -25,8 +40,22 @@ export default function ArticleClient({ id }: { id: string }) {
       setError(null)
       try {
         const parsedId = isNaN(Number(id)) ? id : Number(id)
-        const a = await fetchArticleById(supabase, parsedId)
-        if (!cancelled) setArticle(a)
+        const [fetchedArticle, allArticles] = await Promise.all([
+          fetchArticleById(supabase, parsedId),
+          fetchArticlesFromSupabase(supabase, { limit: 20 })
+        ])
+        if (!cancelled) {
+          setArticle(fetchedArticle)
+          // Filter related articles (same primary topic or topics)
+          const related = allArticles
+            .filter(a => a.id !== fetchedArticle?.id)
+            .filter(a => 
+              a.primaryTopic === fetchedArticle?.primaryTopic ||
+              a.topics.some(t => fetchedArticle?.topics.includes(t))
+            )
+            .slice(0, 10)
+          setRelatedArticles(related)
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message || "Failed to load article")
       } finally {
@@ -38,6 +67,48 @@ export default function ArticleClient({ id }: { id: string }) {
       cancelled = true
     }
   }, [id])
+
+  // Normalize content by converting escaped newlines to real newlines
+  const normalizedContent = article?.content
+    ? article.content.replace(/\\n/g, "\n").replace(/\r\n/g, "\n").trim()
+    : ""
+
+  // Generate TL;DR and insights from content
+  const tldrPoints = useMemo(() => {
+    if (!article?.lead) return ["Key updates in this developing story"]
+    const sentences = article.lead.split(/[.!?]+/).filter(s => s.trim().length > 20)
+    return sentences.slice(0, 3).map(s => s.trim())
+  }, [article])
+
+  const whyItMatters = useMemo(() => {
+    return article?.description || "This story provides important context for understanding current market developments and their potential impact on your financial decisions."
+  }, [article])
+
+  const keyInsights = useMemo(() => ({
+    whatsGoingOn: article?.lead || article?.description || "Breaking developments in this ongoing story.",
+    whatItMeans: article?.conclusion || "These developments may have significant implications for markets, investors, and economic policy.",
+    whoIsAffected: article ? [
+      ...article.entities.companies.slice(0, 3),
+      ...article.topics.slice(0, 2)
+    ].filter(Boolean) : []
+  }), [article])
+
+  const trendingTags = useMemo(() => {
+    const allTopics = relatedArticles.flatMap(a => a.topics)
+    const topicCounts = allTopics.reduce((acc, topic) => {
+      acc[topic] = (acc[topic] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    return Object.entries(topicCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([topic]) => topic)
+      .slice(0, 8)
+  }, [relatedArticles])
+
+  const suggestedSectors = useMemo(() => {
+    const categories = relatedArticles.map(a => a.category).filter(Boolean)
+    return Array.from(new Set(categories)).slice(0, 6)
+  }, [relatedArticles])
 
   if (loading) {
     return (
@@ -60,180 +131,235 @@ export default function ArticleClient({ id }: { id: string }) {
     )
   }
 
-  // Format content preserving single newlines as <br />, double+ newlines as paragraph breaks,
-  // detect simple markdown-style headings (#, ##, ###) and bullet lists (- or *).
-  const formattedContent = (() => {
-    if (!article.content) return [] as React.ReactElement[]
-    // Some rows may contain literal "\n" sequences instead of actual newlines; convert them first.
-    const raw = article.content
-      .replace(/\\n/g, "\n") // turn escaped sequences into real newlines
-      .replace(/\r\n/g, "\n")
-      .trim()
-    if (!raw) return []
-    const blocks = raw.split(/\n{2,}/)
-    const elements: React.ReactElement[] = []
-    blocks.forEach((block, bi) => {
-      const lines = block.split(/\n/).map(l => l.replace(/\s+$/,'')).filter(Boolean)
-      if (!lines.length) return
-      // List detection: at least 2 lines and every line starts with - or * followed by space
-      const isList = lines.length > 1 && lines.every(l => /^[-*]\s+/.test(l))
-      if (isList) {
-        elements.push(
-          <ul key={`ul-${bi}`} className="list-disc pl-6 space-y-1">
-            {lines.map((l, i) => (
-              <li key={i}>{l.replace(/^[-*]\s+/, "")}</li>
-            ))}
-          </ul>
-        )
-        return
-      }
-      // Heading detection only for first line
-      const headingMatch = /^(#{1,6})\s+(.*)$/.exec(lines[0])
-      let consumedHeading = false
-      if (headingMatch) {
-        const level = Math.min(headingMatch[1].length, 6)
-        const text = headingMatch[2].trim()
-        const hClasses =
-          level <= 2
-            ? "mt-8 mb-3 font-bold text-3xl md:text-4xl leading-tight"
-            : level === 3
-              ? "mt-6 mb-2 font-semibold text-2xl"
-              : "mt-4 mb-2 font-semibold text-xl"
-        switch (level) {
-          case 1:
-            elements.push(<h1 key={`h-${bi}`} className={hClasses}>{text}</h1>)
-            break
-          case 2:
-            elements.push(<h2 key={`h-${bi}`} className={hClasses}>{text}</h2>)
-            break
-          case 3:
-            elements.push(<h3 key={`h-${bi}`} className={hClasses}>{text}</h3>)
-            break
-          case 4:
-            elements.push(<h4 key={`h-${bi}`} className={hClasses}>{text}</h4>)
-            break
-          case 5:
-            elements.push(<h5 key={`h-${bi}`} className={hClasses}>{text}</h5>)
-            break
-          default:
-            elements.push(<h6 key={`h-${bi}`} className={hClasses}>{text}</h6>)
-            break
-        }
-        lines.shift()
-        consumedHeading = true
-      }
-      if (lines.length) {
-        elements.push(
-          <p key={`p-${bi}${consumedHeading?'-after':''}`} className="leading-7 text-foreground">
-            {lines.map((ln, i) => (
-              <span key={i}>
-                {ln}
-                {i < lines.length - 1 && <br />}
-              </span>
-            ))}
-          </p>
-        )
-      }
-    })
-    return elements
-  })()
-
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b border-border bg-background sticky top-0 z-50">
-        <div className="flex items-center justify-between px-6 py-4">
-          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-bold text-lg">Back</span>
-          </Link>
-        </div>
-      </div>
+      {/* Persistent Navigation */}
+      <ArticleNavigation trendingTags={trendingTags} />
 
-      <main className="px-6 py-8">
-        <div className="max-w-3xl mx-auto space-y-6">
-          <div className="space-y-4">
-            <ArticleSEOKeywords article={article} />
-
-            <ArticleMetadata article={article} />
-
-            <h1 className="text-3xl md:text-4xl font-bold leading-tight">{article.title}</h1>
-            {article.subheadline ? (
-              <p className="text-lg text-muted-foreground">{article.subheadline}</p>
-            ) : (
-              article.description && (
-                <p className="text-lg text-muted-foreground">{article.description}</p>
-              )
-            )}
-            {/* AI Byline */}
-            <p className="text-sm text-muted-foreground italic">
-              Generated by <span className="font-medium">William AI</span> using analysis and synthesis of the referenced news sources.
-            </p>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground pt-2 border-t border-border">
-              <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
-                {article.source.logo}
+      {/* Article Header - Full Width */}
+      <div className="container mx-auto px-4 py-8">
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+            {/* Header Content */}
+            <div className="order-2 md:order-1 md:col-span-2">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold leading-tight mb-4">
+                {article.title}
+              </h1>
+              {article.subheadline && (
+                <p className="text-lg text-muted-foreground mb-4">{article.subheadline}</p>
+              )}
+              
+              {/* Metadata Row */}
+              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground border-t border-b border-border py-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
+                    {article.source.logo}
+                  </div>
+                  <span className="font-medium">{article.source.name}</span>
+                </div>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <Clock className="w-3 h-3" />
+                  <span>{formatDate(article.publishedAt)}</span>
+                </div>
+                {article.readTimeMinutes && (
+                  <>
+                    <span>•</span>
+                    <span>{article.readTimeMinutes} min read</span>
+                  </>
+                )}
+                {article.sentiment && (
+                  <>
+                    <span>•</span>
+                    <Badge variant="secondary" className="capitalize text-xs">
+                      {article.sentiment}
+                    </Badge>
+                  </>
+                )}
               </div>
-              <span className="font-medium">{article.source.name}</span>
-              <span>•</span>
-              <span>{formatDate(article.publishedAt)}</span>
+              
+              {/* AI Byline */}
+              <p className="text-sm text-muted-foreground italic mt-3">
+                Generated by <span className="font-medium">William AI</span> using analysis and synthesis of the referenced news sources.
+              </p>
+            </div>
+
+            {/* Smaller Hero Image - Aligned Right */}
+            <div className="order-1 md:order-2 flex justify-center md:justify-end">
+              <div className="relative w-full max-w-md h-64 bg-muted rounded-lg overflow-hidden">
+                <Image 
+                  src={article.image || "/placeholder.svg"} 
+                  alt={article.title} 
+                  fill 
+                  className="object-cover" 
+                  priority
+                />
+              </div>
             </div>
           </div>
-
-          <div className="relative w-full h-64 md:h-80 bg-muted rounded-md overflow-hidden">
-            <Image src={article.image || "/placeholder.svg"} alt={article.title} fill className="object-cover" />
-            {article.imageSuggestions && article.imageSuggestions.length > 1 && (
-              <div className="absolute bottom-2 left-2 flex gap-2 bg-black/40 backdrop-blur-sm px-2 py-1 rounded-md">
-                {article.imageSuggestions.slice(0,5).map((img, i) => (
-                  <button
-                    key={img}
-                    onClick={() => {
-                      // swap hero image to selected suggestion
-                      setArticle(a => a ? { ...a, image: img } : a)
-                    }}
-                    className={`w-10 h-8 rounded overflow-hidden border border-border hover:ring-1 ring-primary transition ${article.image === img ? 'outline outline-2 outline-primary' : ''}`}
-                    title={`Use image ${i+1}`}
-                  >
-                    <Image src={img} alt="suggestion" width={40} height={32} className="object-cover w-full h-full" />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <Card className="p-6 space-y-4 border border-border">
-            {article.lead && (
-              <p className="text-base leading-7 text-foreground font-medium">
-                {article.lead}
-              </p>
-            )}
-            {formattedContent.length > 0 ? (
-              formattedContent
-            ) : (
-              <p className="text-muted-foreground">No content available for this article.</p>
-            )}
-            {article.conclusion && (
-              <>
-                <hr className="my-2 border-border" />
-                <h3 className="text-lg font-semibold">Conclusion</h3>
-                <p className="text-foreground leading-7">{article.conclusion}</p>
-              </>
-            )}
-            {/* Sources Attribution */}
-            {(article.originalSources && article.originalSources.length > 0) && (
-              <div className="pt-4 mt-2 border-t border-dashed border-border space-y-2">
-                <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide">Sources Referenced</p>
-                <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                  {article.originalSources.map((s, i) => (
-                    <li key={`${s.domain||s.name}-${i}`}>{s.name}{s.domain && ` (${s.domain})`}</li>
-                  ))}
-                </ul>
-                <p className="text-xs text-muted-foreground italic">Content is AI-generated; verify critical information against the original publishers.</p>
-              </div>
-            )}
-          </Card>
-
-          {/* SEO Keywords at the bottom */}
         </div>
-      </main>
+
+        {/* Two-Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Main Content - Center Column (Wider) */}
+          <main className="lg:col-span-9 xl:col-span-9">
+
+            {/* Article Context Block */}
+            <ArticleContextBlock 
+              tldr={tldrPoints}
+              whyItMatters={whyItMatters}
+              sentiment={article.sentiment}
+            />
+
+            {/* Key Insights Section */}
+            <ArticleKeyInsights
+              whatsGoingOn={keyInsights.whatsGoingOn}
+              whatItMeans={keyInsights.whatItMeans}
+              whoIsAffected={keyInsights.whoIsAffected}
+            />
+
+            {/* Main Article Body */}
+            <Card className="p-6 lg:p-8 mb-6">
+              {article.lead && (
+                <div className="mb-6 pb-6 border-b border-border">
+                  <p className="text-lg leading-relaxed font-medium text-foreground">
+                    {article.lead}
+                  </p>
+                </div>
+              )}
+
+              {normalizedContent ? (
+                <article className="prose prose-slate dark:prose-invert max-w-none prose-headings:scroll-mt-20">
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      h1: ({ node, ...props }) => <h1 className="mt-8 mb-4 font-bold text-3xl md:text-4xl leading-tight" {...props} />,
+                      h2: ({ node, ...props }) => <h2 className="mt-8 mb-4 font-bold text-2xl md:text-3xl leading-tight" {...props} />,
+                      h3: ({ node, ...props }) => <h3 className="mt-6 mb-3 font-semibold text-xl md:text-2xl" {...props} />,
+                      h4: ({ node, ...props }) => <h4 className="mt-4 mb-2 font-semibold text-lg md:text-xl" {...props} />,
+                      h5: ({ node, ...props }) => <h5 className="mt-4 mb-2 font-semibold text-base md:text-lg" {...props} />,
+                      h6: ({ node, ...props }) => <h6 className="mt-4 mb-2 font-semibold text-sm md:text-base" {...props} />,
+                      p: ({ node, ...props }) => <p className="leading-relaxed text-foreground mb-4" {...props} />,
+                      ul: ({ node, ...props }) => <ul className="list-disc pl-6 space-y-2 mb-4" {...props} />,
+                      ol: ({ node, ...props }) => <ol className="list-decimal pl-6 space-y-2 mb-4" {...props} />,
+                      li: ({ node, ...props }) => <li className="leading-relaxed" {...props} />,
+                      a: ({ node, ...props }) => <a className="text-primary hover:underline font-medium" {...props} />,
+                      blockquote: ({ node, ...props }) => (
+                        <blockquote className="border-l-4 border-primary pl-6 py-2 italic my-6 text-muted-foreground bg-muted/30 rounded-r" {...props} />
+                      ),
+                      code: ({ node, inline, ...props }: any) =>
+                        inline ? (
+                          <code className="bg-muted px-2 py-1 rounded text-sm font-mono" {...props} />
+                        ) : (
+                          <code className="block bg-muted p-4 rounded text-sm font-mono overflow-x-auto" {...props} />
+                        ),
+                      pre: ({ node, ...props }) => <pre className="bg-muted p-4 rounded overflow-x-auto mb-4" {...props} />,
+                      table: ({ node, ...props }) => (
+                        <div className="overflow-x-auto mb-6 rounded-lg border border-border">
+                          <table className="min-w-full border-collapse" {...props} />
+                        </div>
+                      ),
+                      th: ({ node, ...props }) => <th className="border border-border px-4 py-3 bg-muted font-semibold text-left" {...props} />,
+                      td: ({ node, ...props }) => <td className="border border-border px-4 py-3" {...props} />,
+                      hr: ({ node, ...props }) => <hr className="my-8 border-border" {...props} />,
+                    }}
+                  >
+                    {normalizedContent}
+                  </ReactMarkdown>
+                </article>
+              ) : (
+                <p className="text-muted-foreground">No content available for this article.</p>
+              )}
+
+              {article.conclusion && (
+                <div className="mt-8 pt-6 border-t border-border">
+                  <h3 className="text-xl font-bold mb-3">Conclusion</h3>
+                  <p className="text-foreground leading-relaxed">{article.conclusion}</p>
+                </div>
+              )}
+
+              {/* Sources Attribution */}
+              {(article.originalSources && article.originalSources.length > 0) && (
+                <div className="mt-8 pt-6 border-t border-dashed border-border">
+                  <p className="text-xs font-semibold uppercase text-muted-foreground tracking-wide mb-3">
+                    Sources Referenced
+                  </p>
+                  <ul className="space-y-3 text-sm">
+                    {article.originalSources.map((s, i) => (
+                      <li key={`${s.url||s.domain||s.name}-${i}`} className="flex items-start gap-2">
+                        <span className="text-primary mt-1">•</span>
+                        <div className="flex-1">
+                          {s.url ? (
+                            <a 
+                              href={s.url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline font-medium block"
+                            >
+                              {s.title || s.name}
+                            </a>
+                          ) : (
+                            <span className="font-medium block">{s.title || s.name}</span>
+                          )}
+                          {s.domain && (
+                            <span className="text-xs text-muted-foreground">{s.domain}</span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-xs text-muted-foreground italic mt-4">
+                    Content is AI-generated; verify critical information against the original publishers.
+                  </p>
+                </div>
+              )}
+            </Card>
+
+            {/* Continue Exploring Section */}
+            <ContinueExploring
+              relatedArticles={relatedArticles}
+              trendingTopics={trendingTags}
+              suggestedSectors={suggestedSectors}
+            />
+          </main>
+
+          {/* Right Sidebar - Engagement & Discovery Widgets */}
+          <aside className="lg:col-span-3 xl:col-span-3 space-y-6">
+            {/* Trending Stories */}
+            <TrendingStoriesWidget articles={relatedArticles} />
+
+            {/* Sources Used */}
+            <SourcesUsedWidget sources={article.originalSources || []} />
+
+            {/* Story Stats */}
+            <StoryStatsWidget
+              totalSources={article.originalSources?.length || 0}
+              articleCount={relatedArticles.length}
+              publishRange={formatDate(article.publishedAt)}
+              sentiment={article.sentiment}
+            />
+
+            {/* Companies & Tags */}
+            <CompaniesTagsWidget
+              companies={article.entities.companies}
+              topics={article.topics}
+              primaryTopic={article.primaryTopic}
+            />
+
+            {/* Story History - only if we have related articles */}
+            {relatedArticles.length > 0 && (
+              <StoryHistoryWidget
+                events={relatedArticles.slice(0, 5).map(a => ({
+                  date: a.publishedAt,
+                  headline: a.title,
+                  source: a.source.name
+                }))}
+              />
+            )}
+          </aside>
+        </div>
+      </div>
     </div>
   )
 }
