@@ -26,7 +26,7 @@ export default function Header() {
 
           {/* Right: Theme Toggle + CTA */}
           <div className="flex items-center gap-2">
-            {mounted && (
+            {/* {mounted && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -39,7 +39,7 @@ export default function Header() {
                   <Moon className="h-4 w-4" />
                 )}
               </Button>
-            )}
+            )} */}
             <Button size="sm" className="hidden sm:inline-flex">
               Subscribe
             </Button>

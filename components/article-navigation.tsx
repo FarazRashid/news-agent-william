@@ -43,7 +43,7 @@ export function ArticleNavigation({ trendingTags = [] }: ArticleNavProps) {
               <Link key={idx} href={`/feed?topic=${encodeURIComponent(tag)}`}>
                 <Badge 
                   variant="secondary" 
-                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize whitespace-nowrap"
+                  className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize whitespace-nowrap rounded-full"
                 >
                   {tag}
                 </Badge>
@@ -53,20 +53,23 @@ export function ArticleNavigation({ trendingTags = [] }: ArticleNavProps) {
 
           {/* Right: Theme Toggle + CTA */}
           <div className="flex items-center gap-2">
-            {mounted && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                className="h-9 w-9"
-              >
-                {theme === "dark" ? (
-                  <Sun className="h-4 w-4" />
-                ) : (
-                  <Moon className="h-4 w-4" />
-                )}
-              </Button>
-            )}
+            {/* {mounted &&  
+            // (
+              // <Button
+              //   variant="ghost"
+              //   size="icon"
+              //   onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              //   className="h-9 w-9"
+              // >
+              //   {theme === "dark" ? (
+              //     <Sun className="h-4 w-4" />
+              //   ) : (
+              //     <Moon className="h-4 w-4" />
+              //   )}
+              // </Button>
+            )
+            //
+            } */}
             <Button size="sm" className="hidden sm:inline-flex">
               Subscribe
             </Button>

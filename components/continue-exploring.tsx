@@ -37,7 +37,7 @@ export function ContinueExploring({
                 <Link key={idx} href={`/?topic=${encodeURIComponent(topic)}`}>
                   <Badge 
                     variant="secondary" 
-                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
+                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize rounded-full"
                   >
                     {topic}
                   </Badge>
@@ -63,7 +63,7 @@ export function ContinueExploring({
                 <Link key={idx} href={`/?category=${encodeURIComponent(sector)}`}>
                   <Badge 
                     variant="outline" 
-                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
+                    className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize rounded-full"
                   >
                     {sector}
                   </Badge>

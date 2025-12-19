@@ -93,18 +93,19 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Load filters from URL parameters on mount
+  // Load filters from URL parameters - syncs whenever URL changes
   useEffect(() => {
-    const urlFilters: Partial<FilterState> = {}
+    // Start with default filters to ensure clean state
+    const urlFilters: FilterState = { ...defaultFilters }
     
     const search = searchParams.get("search")
     if (search) urlFilters.search = search
 
-  const categories = searchParams.get("categories")
-  if (categories) urlFilters.categories = categories.split(",").filter(Boolean)
+    const categories = searchParams.get("categories")
+    if (categories) urlFilters.categories = categories.split(",").filter(Boolean)
 
-  const primaryTopics = searchParams.get("primaryTopics")
-  if (primaryTopics) urlFilters.primaryTopics = primaryTopics.split(",").filter(Boolean)
+    const primaryTopics = searchParams.get("primaryTopics")
+    if (primaryTopics) urlFilters.primaryTopics = primaryTopics.split(",").filter(Boolean)
 
     const sources = searchParams.get("sources")
     if (sources) urlFilters.sources = sources.split(",").filter(Boolean)
@@ -126,11 +127,10 @@ export function NewsProvider({ children }: { children: ReactNode }) {
       setSortOrderState(sort as SortOrder)
     }
 
-    if (Object.keys(urlFilters).length > 0) {
-      setFilters(prev => ({ ...prev, ...urlFilters }))
-    }
+    // Replace filters entirely with URL state
+    setFilters(urlFilters)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [searchParams])
 
   // Save filters to localStorage whenever they change
   useEffect(() => {

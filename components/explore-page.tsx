@@ -1,13 +1,16 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Search, TrendingUp, Sparkles } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
+import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
-import { useNews } from "@/lib/news-context"
 import { useRouter } from "next/navigation"
+import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
+import type { Article } from "@/lib/types"
+import { mapArticleRowToArticle } from "@/lib/articles"
 
 const TOPIC_CATEGORIES = [
   {
@@ -37,12 +40,43 @@ const TOPIC_CATEGORIES = [
 ]
 
 export function ExplorePage() {
-  const { articles } = useNews()
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
+  const [articles, setArticles] = useState<Article[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Fetch only recent articles for trending topics (lighter query)
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient()
+    const fetchRecentArticles = async () => {
+      setLoading(true)
+      try {
+        const { data, error } = await supabase
+          .from("articles")
+          .select("*")
+          .order("published_at", { ascending: false })
+          .limit(50) // Only fetch 50 most recent articles for trending topics
+        
+        if (error) throw error
+        
+        if (data) {
+          const mapped = data.map(mapArticleRowToArticle)
+          setArticles(mapped)
+        }
+      } catch (err) {
+        console.error("Error fetching articles:", err)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    fetchRecentArticles()
+  }, [])
 
   // Generate trending topics from articles
   const trendingTopics = useMemo(() => {
+    if (articles.length === 0) return []
+    
     const allTopics = articles
       .flatMap(a => a.topics)
       .map(t => t.trim())
@@ -107,48 +141,55 @@ export function ExplorePage() {
             <h2 className="text-2xl font-bold">Content Topics</h2>
           </div>
           
-          <div className="flex flex-wrap gap-2 mb-4">
-            <Link href="/feed">
-              <Badge variant="outline" className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors">
-                See All Topics
-              </Badge>
-            </Link>
-            {trendingTopics.slice(0, 20).map((topic, idx) => (
-              <Link key={idx} href={`/feed?topic=${encodeURIComponent(topic)}`}>
-                <Badge 
-                  variant="secondary" 
-                  className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize"
-                >
-                  {topic}
+          {loading ? (
+            <div className="flex flex-wrap gap-2 mb-4 rounded-full">
+              {Array.from({ length: 15 }).map((_, idx) => (
+                <Skeleton key={idx} className="h-9 w-24 rounded-full" />
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 mb-4">
+              <Link href="/feed">
+                <Badge variant="outline" className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors">
+                  See All Topics
                 </Badge>
               </Link>
-            ))}
-          </div>
+              {trendingTopics.slice(0, 20).map((topic, idx) => (
+                <Link key={idx} href={`/feed?topic=${encodeURIComponent(topic)}`}>
+                  <Badge 
+                    variant="secondary" 
+                    className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize rounded-full"
+                  >
+                    {topic}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Topic Categories */}
         <div>
-          <div className="flex items-center gap-2 mb-6">
-            <TrendingUp className="w-5 h-5 text-primary" />
-            <h2 className="text-2xl font-bold">Topic Categories</h2>
-          </div>
+          <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-6">
+            Topic Categories
+          </h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
             {TOPIC_CATEGORIES.map((category, idx) => (
-              <Card key={idx} className="p-6 hover:shadow-lg transition-shadow">
-                <h3 className="text-lg font-semibold mb-4">{category.name}</h3>
-                <div className="space-y-2">
+              <div key={idx}>
+                <h3 className="text-lg font-bold mb-4">{category.name}</h3>
+                <div className="space-y-3">
                   {category.topics.map((topic, topicIdx) => (
                     <Link
                       key={topicIdx}
                       href={`/feed?topic=${encodeURIComponent(topic)}`}
-                      className="block text-sm text-muted-foreground hover:text-primary transition-colors"
+                      className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
                     >
                       {topic}
                     </Link>
                   ))}
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         </div>
