@@ -25,7 +25,7 @@ export function ArticleNavigation({ trendingTags = [] }: ArticleNavProps) {
         <div className="flex items-center justify-between gap-4">
           {/* Left: Back Button + Logo */}
           <div className="flex items-center gap-4">
-            <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
+            <Link href="/feed" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
               <ArrowLeft className="w-4 h-4" />
               <span className="hidden sm:inline font-semibold">Back</span>
             </Link>
@@ -40,7 +40,7 @@ export function ArticleNavigation({ trendingTags = [] }: ArticleNavProps) {
           <div className="hidden lg:flex items-center gap-2 overflow-x-auto max-w-md scrollbar-hide">
             <TrendingUp className="w-4 h-4 text-muted-foreground shrink-0" />
             {trendingTags.slice(0, 4).map((tag, idx) => (
-              <Link key={idx} href={`/?topic=${encodeURIComponent(tag)}`}>
+              <Link key={idx} href={`/feed?topic=${encodeURIComponent(tag)}`}>
                 <Badge 
                   variant="secondary" 
                   className="cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize whitespace-nowrap"
@@ -79,7 +79,7 @@ export function ArticleNavigation({ trendingTags = [] }: ArticleNavProps) {
         <div className="flex items-center gap-2">
           <TrendingUp className="w-3 h-3 text-muted-foreground shrink-0" />
           {trendingTags.slice(0, 6).map((tag, idx) => (
-            <Link key={idx} href={`/?topic=${encodeURIComponent(tag)}`}>
+            <Link key={idx} href={`/feed?topic=${encodeURIComponent(tag)}`}>
               <Badge 
                 variant="secondary" 
                 className="text-xs cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize whitespace-nowrap"

@@ -19,7 +19,7 @@ export default function Header() {
       <div className="container mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           {/* Left: Logo */}
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
             <Newspaper className="w-5 h-5 text-primary" />
             <span className="font-bold text-lg">Wealth Manager</span>
           </Link>

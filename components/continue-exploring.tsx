@@ -46,7 +46,7 @@ export function ContinueExploring({
             </div>
           </div>
           <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link href="/">
+            <Link href="/feed">
               Explore All Topics <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
           </Button>
@@ -72,7 +72,7 @@ export function ContinueExploring({
             </div>
           </div>
           <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link href="/">
+            <Link href="/feed">
               View All Sectors <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
           </Button>
@@ -99,7 +99,7 @@ export function ContinueExploring({
             </div>
           </div>
           <Button variant="outline" size="sm" className="w-full" asChild>
-            <Link href="/">
+            <Link href="/feed">
               See More Articles <ArrowRight className="w-3 h-3 ml-1" />
             </Link>
           </Button>

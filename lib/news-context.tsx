@@ -1,7 +1,7 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useMemo, useEffect, type ReactNode } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import type { FilterState, Article, FilterCounts } from "./types"
 import { filterArticles, calculateFilterCounts, extractCategoryTokensFromArticle, canonicalizePrimaryTopic, normalizePrimarySubtopic, tokenizePrimarySubtopic } from "./filter-utils"
 import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
@@ -63,6 +63,7 @@ const NewsContext = createContext<NewsContextType | undefined>(undefined)
 export function NewsProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const [filters, setFilters] = useState<FilterState>(defaultFilters)
   const [sortOrder, setSortOrderState] = useState<SortOrder>("newest")
   const [articles, setArticles] = useState<Article[]>()
@@ -155,13 +156,13 @@ export function NewsProvider({ children }: { children: ReactNode }) {
       if (sortOrder !== "newest") params.set("sort", sortOrder)
 
       const query = params.toString()
-      const newUrl = query ? `/?${query}` : "/"
+      const newUrl = query ? `${pathname}?${query}` : pathname
       
       router.replace(newUrl, { scroll: false })
     }, 500)
 
     return () => clearTimeout(timer)
-  }, [filters, sortOrder, router])
+  }, [filters, sortOrder, router, pathname])
 
   const loadArticles = useCallback(async () => {
     setLoading(true)
