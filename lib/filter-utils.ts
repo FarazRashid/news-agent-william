@@ -125,7 +125,7 @@ export function filterArticles(articles: Article[], filters: FilterState): Artic
       if (!matches) return false
     }
 
-    // Primary Topics filter (OR logic)
+    // Primary Topics filter (OR logic) - check both primaryTopic and topics array
     if (filters.primaryTopics.length > 0) {
       const artCanonical = canonicalizePrimaryTopic(article.primaryTopic)
       const artNorm = normalizePrimarySubtopic(article.primaryTopic)
@@ -134,11 +134,17 @@ export function filterArticles(articles: Article[], filters: FilterState): Artic
         const selCanonical = canonicalizePrimaryTopic(sel)
         const selNorm = normalizePrimarySubtopic(sel)
         const selTokens = tokenizePrimarySubtopic(sel)
-        // exact or canonical equality
+        
+        // First, check if it matches any topic in the topics array (case-insensitive)
+        if (article.topics?.some(t => t.toLowerCase() === sel.toLowerCase())) {
+          return true
+        }
+        
+        // Case-insensitive exact or canonical equality for primaryTopic
         if (
-          sel === article.primaryTopic ||
-          (artCanonical !== null && sel === artCanonical) ||
-          (selCanonical !== null && artCanonical !== null && selCanonical === artCanonical) ||
+          sel.toLowerCase() === article.primaryTopic?.toLowerCase() ||
+          (artCanonical !== null && sel.toLowerCase() === artCanonical.toLowerCase()) ||
+          (selCanonical !== null && artCanonical !== null && selCanonical.toLowerCase() === artCanonical.toLowerCase()) ||
           (selNorm !== null && artNorm !== null && selNorm === artNorm)
         ) {
           return true
