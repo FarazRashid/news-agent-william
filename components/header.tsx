@@ -1,83 +1,49 @@
 "use client"
 
-import { Menu, PanelLeftClose, PanelRightClose } from "lucide-react"
+import Link from "next/link"
+import { Newspaper, Moon, Sun } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { createContext, useContext, useState, ReactNode } from "react"
-
-// Context to manage sidebar state across components
-type SidebarContextType = {
-  isCollapsed: boolean
-  toggleSidebar: () => void
-  isRightCollapsed: boolean
-  toggleRightSidebar: () => void
-}
-
-const SidebarContext = createContext<SidebarContextType | undefined>(undefined)
-
-export function SidebarProvider({ children }: { children: ReactNode }) {
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [isRightCollapsed, setIsRightCollapsed] = useState(false)
-  
-  const toggleSidebar = () => setIsCollapsed(prev => !prev)
-  const toggleRightSidebar = () => setIsRightCollapsed(prev => !prev)
-  
-  return (
-    <SidebarContext.Provider value={{ isCollapsed, toggleSidebar, isRightCollapsed, toggleRightSidebar }}>
-      {children}
-    </SidebarContext.Provider>
-  )
-}
-
-export function useSidebarContext() {
-  const context = useContext(SidebarContext)
-  if (!context) {
-    throw new Error('useSidebarContext must be used within SidebarProvider')
-  }
-  return context
-}
+import { useTheme } from "next-themes"
+import { useState, useEffect } from "react"
 
 export default function Header() {
-  const { toggleSidebar, toggleRightSidebar } = useSidebarContext()
+  const { theme, setTheme } = useTheme()
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
   
   return (
-    <header className="border-b border-border bg-card sticky top-0 z-50">
-      <div className="flex items-center justify-between px-6 py-4">
-        <div className="flex items-center gap-4">
-          
-          <button className="lg:hidden">
-            <Menu className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-bold text-foreground">wealth manager</h1>
-        </div>
+    <header className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+      <div className="container mx-auto px-4 py-3">
+        <div className="flex items-center justify-between gap-4">
+          {/* Left: Logo */}
+          <Link href="/" className="flex items-center gap-2">
+            <Newspaper className="w-5 h-5 text-primary" />
+            <span className="font-bold text-lg">Wealth Manager</span>
+          </Link>
 
-        <nav className="hidden md:flex gap-8">
-          <a href="#" className="text-sm font-medium text-primary hover:text-primary/80 pb-2 border-b-2 border-primary">
-            Dashboard
-          </a>
-          {/* <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-            Investments
-          </a>
-          <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-            Markets
-          </a>
-          <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-            News
-          </a>
-          <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-            Reports
-          </a>
-          <a href="#" className="text-sm font-medium text-muted-foreground hover:text-foreground">
-            Analytics
-          </a> */}
-        </nav>
-
-        <div className="flex gap-3">
-        
-           
-          {/* <Button variant="ghost" className="text-sm">
-            Sign In
-          </Button>
-          <Button className="bg-foreground text-background hover:bg-foreground/90 text-sm">Get Started</Button> */}
+          {/* Right: Theme Toggle + CTA */}
+          <div className="flex items-center gap-2">
+            {mounted && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                className="h-9 w-9"
+              >
+                {theme === "dark" ? (
+                  <Sun className="h-4 w-4" />
+                ) : (
+                  <Moon className="h-4 w-4" />
+                )}
+              </Button>
+            )}
+            <Button size="sm" className="hidden sm:inline-flex">
+              Subscribe
+            </Button>
+          </div>
         </div>
       </div>
     </header>

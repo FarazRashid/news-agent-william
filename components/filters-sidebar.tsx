@@ -7,7 +7,6 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { useNews } from "@/lib/news-context"
 import { Textarea } from "@/components/ui/textarea"
-import { useSidebarContext } from "@/components/header"
 import { useDebounce } from "@/hooks/use-debounce"
 
 const TIME_PRESETS = [
@@ -26,7 +25,6 @@ type SectionKey = "search" | "time" | "topics" | "entities" | "locations" | "sou
 
 export default function FiltersSidebar() {
   const { filters, updateFilter, resetFilters, filterCounts, availableCategories, availablePrimaryTopics, groupedPrimaryTopics } = useNews()
-  const { isCollapsed, toggleSidebar } = useSidebarContext()
   
   // Debounced search input
   const [searchInput, setSearchInput] = useState(filters.search)
@@ -106,39 +104,11 @@ export default function FiltersSidebar() {
   )
 
   return (
-    <>
-      {/* Collapsed state - thin bar on the left */}
-      {isCollapsed && (
-        <div className="hidden md:flex flex-col w-12 border-r border-border bg-card items-center py-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="h-10 w-10"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </Button>
-        </div>
-      )}
-
-      {/* Expanded state - full sidebar */}
-      {!isCollapsed && (
-        <aside className="hidden md:flex flex-col w-64 md:w-72 lg:w-80 border-r border-border bg-card overflow-hidden">
-          {/* Header */}
-          <div className="flex items-center justify-between px-3 md:px-4 py-3 md:py-4 border-b border-border">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleSidebar}
-                className="h-8 w-8 -ml-2 shrink-0"
-                aria-label="Collapse sidebar"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <h2 className="font-semibold text-foreground text-sm md:text-base truncate">Filters</h2>
-            </div>
-            <Button 
+    <aside className="hidden md:flex flex-col w-64 md:w-72 lg:w-80 border-r border-border bg-card overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-3 md:px-4 py-3 md:py-4 border-b border-border">
+        <h2 className="font-semibold text-foreground text-sm md:text-base">Filters</h2>
+        <Button 
               variant="outline" 
               size="sm" 
               className="text-xs h-7 md:h-8 px-2 md:px-3 shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive" 
@@ -551,8 +521,6 @@ export default function FiltersSidebar() {
 
       {/* Chat Interface at Bottom */}
       
-        </aside>
-      )}
-    </>
+    </aside>
   )
 }
