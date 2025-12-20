@@ -45,7 +45,7 @@ export function ExplorePage() {
     const [articles, setArticles] = useState<Article[]>([])
     const [loading, setLoading] = useState(true)
 
-    // Fetch only recent articles for trending topics (lighter query)
+    // Fetch only topics for trending topics display (optimized query)
     useEffect(() => {
         const supabase = createSupabaseBrowserClient()
         const fetchRecentArticles = async () => {
@@ -53,15 +53,20 @@ export function ExplorePage() {
             try {
                 const { data, error } = await supabase
                     .from("articles")
-                    .select("*")
+                    .select("secondary_topics")
                     .order("published_at", { ascending: false })
-                    .limit(50) // Only fetch 50 most recent articles for trending topics
+                    .limit(20) // Reduced from 50 to 20 for better performance
 
                 if (error) throw error
 
                 if (data) {
-                    const mapped = data.map(mapArticleRowToArticle)
-                    setArticles(mapped)
+                    // Extract topics from the lightweight response
+                    const allTopics = data.flatMap(row => row.secondary_topics || [])
+                    // Store as minimal article-like objects with just topics
+                    setArticles(allTopics.map((topic, idx) => ({ 
+                        id: String(idx), 
+                        topics: [topic] 
+                    } as any)))
                 }
             } catch (err) {
                 console.error("Error fetching articles:", err)

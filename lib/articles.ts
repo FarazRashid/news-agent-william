@@ -400,11 +400,11 @@ export type GetArticlesOptions = {
 }
 
 export async function fetchArticlesFromSupabase(supabase: any, opts: GetArticlesOptions = {}): Promise<Article[]> {
-  const limit = opts.limit ?? 200
+  const limit = opts.limit ?? 100
   const { data, error } = await supabase
     .from("articles")
     .select(
-      "id, headline, subheadline, lead_paragraph, body, conclusion, category, primary_topic, tags, secondary_topics, canonical_topics, sources, image_suggestions, geographic_focus, created_at, published_at, post_url, word_count, read_time_minutes, sentiment, urgency, audience_level, meta_title, meta_description, focus_keyword, related_keywords, readability_score"
+      "id, headline, subheadline, lead_paragraph, conclusion, category, primary_topic, tags, secondary_topics, canonical_topics, sources, image_suggestions, geographic_focus, created_at, published_at, post_url, word_count, read_time_minutes, sentiment, urgency, audience_level, meta_title, meta_description, focus_keyword, related_keywords, readability_score"
     )
     .order("published_at", { ascending: false })
     .limit(limit)

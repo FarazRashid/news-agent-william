@@ -168,7 +168,7 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     setError(null)
     try {
-      const fetched = await fetchArticlesFromSupabase(supabase, { limit: 200 })
+      const fetched = await fetchArticlesFromSupabase(supabase, { limit: 100 })
       if (fetched.length > 0) {
         setArticles(fetched)
       } else {
