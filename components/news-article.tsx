@@ -2,7 +2,7 @@ import type { Article } from "@/lib/types"
 import Link from "next/link"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
-import { Target, Users, CheckCircle2 } from "lucide-react"
+import { Target, Users, CheckCircle2, TrendingUp } from "lucide-react"
 
 export default function NewsArticle({ article }: { article: Article }) {
   return (
@@ -31,6 +31,27 @@ export default function NewsArticle({ article }: { article: Article }) {
         </p>
         {/* Tags / badges */}
         <div className="flex flex-wrap items-center gap-1.5 mb-3">
+          {/* Stock Symbols - Priority placement */}
+          {article.entities.stockSymbols && article.entities.stockSymbols.length > 0 && (
+            <div className="flex flex-wrap gap-1.5">
+              {article.entities.stockSymbols.slice(0, 3).map((symbol, idx) => (
+                <Link
+                  key={`${symbol}-${idx}`}
+                  href={`/stocks/${symbol}`}
+                  onClick={(e) => e.stopPropagation()}
+                  className="inline-block"
+                >
+                  <Badge
+                    variant="secondary"
+                    className="text-xs font-semibold bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-primary-foreground transition-colors"
+                  >
+                    <TrendingUp className="w-3 h-3 mr-1" />
+                    {symbol}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          )}
           {article.category && (
             <Badge variant="outline" className="capitalize">
               {article.category}

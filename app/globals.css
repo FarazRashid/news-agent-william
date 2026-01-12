@@ -146,10 +146,15 @@
   - ipad-pro: 1024px (iPad Pro and large tablets)
   - trifold: 1200px (Tri-fold phones fully unfolded)
 */
-@variant fold (min-width: 540px);
-@variant ipad (min-width: 820px);
-@variant ipad-pro (min-width: 1024px);
-@variant trifold (min-width: 1200px);
+@custom-media --fold (min-width: 540px);
+@custom-media --ipad (min-width: 820px);
+@custom-media --ipad-pro (min-width: 1024px);
+@custom-media --trifold (min-width: 1200px);
+
+@variant fold (@media (--fold));
+@variant ipad (@media (--ipad));
+@variant ipad-pro (@media (--ipad-pro));
+@variant trifold (@media (--trifold));
 
 /* Utility classes for responsive improvements */
 @layer utilities {

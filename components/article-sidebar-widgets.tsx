@@ -156,9 +156,10 @@ type CompaniesTagsProps = {
   companies: string[]
   topics: string[]
   primaryTopic?: string | null
+  stockSymbols?: string[]
 }
 
-export function CompaniesTagsWidget({ companies, topics, primaryTopic }: CompaniesTagsProps) {
+export function CompaniesTagsWidget({ companies, topics, primaryTopic, stockSymbols = [] }: CompaniesTagsProps) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 mb-4">
@@ -166,6 +167,26 @@ export function CompaniesTagsWidget({ companies, topics, primaryTopic }: Compani
         <h3 className="font-semibold text-sm">Companies & Tags</h3>
       </div>
       
+      {/* Stock Symbols */}
+      {stockSymbols.length > 0 && (
+        <div className="mb-3">
+          <p className="text-xs text-muted-foreground mb-2">Related Stocks</p>
+          <div className="flex flex-wrap gap-1.5">
+            {stockSymbols.slice(0, 6).map((symbol, idx) => (
+              <Link key={idx} href={`/stocks/${symbol}`}>
+                <Badge 
+                  variant="secondary" 
+                  className="text-xs font-semibold bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                >
+                  <TrendingUp className="w-3 h-3 mr-1" />
+                  {symbol}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Primary Topic */}
       {primaryTopic && (
         <div className="mb-3">

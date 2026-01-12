@@ -17,7 +17,7 @@ interface StockNewsFeedProps {
   limit?: number
 }
 
-export function StockNewsFeed({ symbol, companyName, limit = 10 }: StockNewsFeedProps) {
+export function StockNewsFeed({ symbol, companyName, limit = 4 }: StockNewsFeedProps) {
   const [articles, setArticles] = useState<Article[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -36,10 +36,10 @@ export function StockNewsFeed({ symbol, companyName, limit = 10 }: StockNewsFeed
           .from("articles")
           .select("*")
           .or(
-            `title.ilike.%${companyName}%,` +
-            `title.ilike.%${symbol}%,` +
-            `description.ilike.%${companyName}%,` +
-            `lead.ilike.%${companyName}%`
+            `headline.ilike.%${companyName}%,` +
+            `headline.ilike.%${symbol}%,` +
+            `lead_paragraph.ilike.%${companyName}%,` +
+            `body.ilike.%${companyName}%`
           )
           .order("published_at", { ascending: false })
           .limit(limit)
@@ -119,10 +119,10 @@ export function StockNewsFeed({ symbol, companyName, limit = 10 }: StockNewsFeed
   }
 
   return (
-    <div className="space-y-3 fold:space-y-4">
+    <div className="space-y-4 fold:space-y-5">
       {articles.map((article) => (
         <Link key={article.id} href={`/article/${article.id}`}>
-          <Card className="p-4 fold:p-5 hover:border-primary transition-colors cursor-pointer group">
+          <Card className="p-4 mt-2 fold:p-5 hover:border-primary hover:shadow-md transition-all cursor-pointer group">
             <div className="space-y-2 fold:space-y-3">
               {/* Title */}
               <h3 className="text-base fold:text-lg font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-2">

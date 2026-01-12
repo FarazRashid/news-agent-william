@@ -109,18 +109,18 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
     <div className="min-h-screen bg-background">
       {/* Navigation */}
       <div className="border-b border-border">
-        <div className="container mx-auto padding-responsive py-3 fold:py-4">
+        <div className="container mx-auto padding-responsive py-3 sm:py-4">
           <Link href="/">
             <Button variant="ghost" size="sm" className="gap-2">
               <ArrowLeft className="w-4 h-4" />
-              <span className="hidden fold:inline">Back to Home</span>
+              <span className="hidden sm:inline">Back to Home</span>
             </Button>
           </Link>
         </div>
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto padding-responsive py-6 fold:py-8 ipad:py-10">
+      <div className="container mx-auto padding-responsive py-6 sm:py-8 md:py-10">
         {/* Stock Header */}
         <StockHeader
           symbol={stockData.symbol}
@@ -137,87 +137,87 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
         />
 
         {/* Two-Column Layout: Chart + Metrics */}
-        <div className="grid grid-cols-1 ipad:grid-cols-3 gap-4 fold:gap-6 mb-6 fold:mb-8">
-          {/* Left Column: Chart (2/3 width on larger screens) */}
-          <div className="ipad:col-span-2 space-y-4 fold:space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+          {/* Left Column: Chart & About (2/3 width on larger screens) */}
+          <div className="md:col-span-2 space-y-4 sm:space-y-6">
             <StockChart symbol={stockData.symbol} currentPrice={stockData.price} />
-            {summary && <StockAISummary summary={summary} />}
+            
+            {/* Company Info Section */}
+            {stockData.description && (
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold mb-3 sm:mb-4">
+                  About {stockData.name}
+                </h2>
+                <div className="bg-card border border-border rounded-lg p-4 sm:p-5 md:p-6 space-y-3 sm:space-y-4">
+                  <p className="text-sm sm:text-base text-foreground leading-relaxed">
+                    {stockData.description}
+                  </p>
+                  
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-border">
+                    {stockData.sector && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Sector</p>
+                        <p className="text-sm sm:text-base font-medium">{stockData.sector}</p>
+                      </div>
+                    )}
+                    {stockData.industry && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Industry</p>
+                        <p className="text-sm sm:text-base font-medium">{stockData.industry}</p>
+                      </div>
+                    )}
+                    {stockData.ceo && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">CEO</p>
+                        <p className="text-sm sm:text-base font-medium">{stockData.ceo}</p>
+                      </div>
+                    )}
+                    {stockData.employees && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Employees</p>
+                        <p className="text-sm sm:text-base font-medium">
+                          {stockData.employees.toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {stockData.founded && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Founded</p>
+                        <p className="text-sm sm:text-base font-medium">{stockData.founded}</p>
+                      </div>
+                    )}
+                    {stockData.website && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Website</p>
+                        <a
+                          href={stockData.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm sm:text-base font-medium text-primary hover:underline"
+                        >
+                          Visit Site
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Right Column: Metrics Sidebar (1/3 width on larger screens) */}
-          <div className="ipad:col-span-1">
+          {/* Right Column: AI Summary & Metrics Sidebar (1/3 width on larger screens) */}
+          <div className="md:col-span-1 space-y-4 sm:space-y-6">
+            {summary && <StockAISummary summary={summary} />}
             <StockMetrics metrics={metrics} />
           </div>
         </div>
 
-        {/* Company Info Section */}
-        {stockData.description && (
-          <div className="mb-6 fold:mb-8">
-            <h2 className="text-xl fold:text-2xl ipad:text-3xl font-bold mb-3 fold:mb-4">
-              About {stockData.name}
-            </h2>
-            <div className="bg-card border border-border rounded-lg p-4 fold:p-5 ipad:p-6 space-y-3 fold:space-y-4">
-              <p className="text-sm fold:text-base text-foreground leading-relaxed">
-                {stockData.description}
-              </p>
-              
-              <div className="grid grid-cols-2 fold:grid-cols-3 gap-3 fold:gap-4 pt-3 fold:pt-4 border-t border-border">
-                {stockData.sector && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Sector</p>
-                    <p className="text-sm fold:text-base font-medium">{stockData.sector}</p>
-                  </div>
-                )}
-                {stockData.industry && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Industry</p>
-                    <p className="text-sm fold:text-base font-medium">{stockData.industry}</p>
-                  </div>
-                )}
-                {stockData.ceo && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">CEO</p>
-                    <p className="text-sm fold:text-base font-medium">{stockData.ceo}</p>
-                  </div>
-                )}
-                {stockData.employees && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Employees</p>
-                    <p className="text-sm fold:text-base font-medium">
-                      {stockData.employees.toLocaleString()}
-                    </p>
-                  </div>
-                )}
-                {stockData.founded && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Founded</p>
-                    <p className="text-sm fold:text-base font-medium">{stockData.founded}</p>
-                  </div>
-                )}
-                {stockData.website && (
-                  <div>
-                    <p className="text-xs text-muted-foreground mb-1">Website</p>
-                    <a
-                      href={stockData.website}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm fold:text-base font-medium text-primary hover:underline"
-                    >
-                      Visit Site
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* News Section */}
         <div>
-          <h2 className="text-xl fold:text-2xl ipad:text-3xl font-bold mb-4 fold:mb-6">
+          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6">
             Latest News for {stockData.symbol}
           </h2>
-          <StockNewsFeed symbol={stockData.symbol} companyName={stockData.name} limit={10} />
+          <StockNewsFeed symbol={stockData.symbol} companyName={stockData.name} limit={4} />
         </div>
       </div>
     </div>
