@@ -119,17 +119,17 @@ export default function NewsFeed() {
 
   return (
     <main className="flex-1 border-r border-border bg-background min-h-[calc(100vh-73px)]">
-      {/* Mobile Header with Filters */}
-      <div className="lg:hidden sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
-        <div className="flex items-center justify-between p-4">
-          <h1 className="text-xl font-bold">
+      {/* Mobile/Tablet Header with Filters */}
+      <div className="ipad-pro:hidden sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border">
+        <div className="flex items-center justify-between p-3 fold:p-4">
+          <h1 className="text-lg fold:text-xl font-bold">
             Latest News
-            <span className="ml-2 text-sm text-muted-foreground font-normal">
+            <span className="ml-2 text-xs fold:text-sm text-muted-foreground font-normal">
               ({filteredArticles.length})
             </span>
           </h1>
           
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 fold:gap-2">
             <MobileFilterSheet />
             <Button 
               variant="outline" 
@@ -138,20 +138,21 @@ export default function NewsFeed() {
                 const nextSort = sortOrder === 'newest' ? 'oldest' : sortOrder === 'oldest' ? 'relevant' : 'newest'
                 setSortOrder(nextSort)
               }}
+              className="tap-target"
             >
               <ArrowUpDown className="w-4 h-4" />
             </Button>
           </div>
         </div>
         
-        {/* Active filters chips - scrollable on mobile */}
-        <div className="px-4 pb-3">
+        {/* Active filters chips - scrollable on mobile/fold */}
+        <div className="px-3 fold:px-4 pb-2 fold:pb-3 overflow-x-auto scrollbar-hide">
           <ActiveFiltersChips />
         </div>
       </div>
 
-  {/* Filters Header - Desktop */}
-  <div className="hidden lg:block bg-card border-b border-border p-6">
+  {/* Filters Header - Desktop/Large Tablets */}
+  <div className="hidden ipad-pro:block bg-card border-b border-border p-4 ipad:p-6">
         <button
           onClick={() => setFiltersOpen((v) => !v)}
           className="flex items-center justify-between w-full group"
@@ -228,7 +229,7 @@ export default function NewsFeed() {
       </div>
 
       {/* Articles */}
-      <div className="p-4 sm:p-6 lg:p-8 max-w-5xl mx-auto">
+      <div className="p-3 fold:p-4 ipad:p-6 trifold:p-8 max-w-5xl mx-auto">
         {loading ? (
           <ArticleListSkeleton count={7} />
         ) : paginatedArticles.length > 0 ? (

@@ -117,55 +117,55 @@ export function ExplorePage() {
     return (
         <div className="min-h-screen bg-background">
             {/* Hero Section with Search */}
-            <div className="container mx-auto px-4 py-12 md:py-20">
-                <div className="max-w-3xl mx-auto text-center mb-12 mt-12">
-                    <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold mb-4">
+            <div className="container mx-auto padding-responsive py-8 fold:py-12 ipad:py-16 lg:py-20">
+                <div className="max-w-3xl mx-auto text-center mb-8 fold:mb-12 mt-8 fold:mt-12">
+                    <h1 className="text-3xl fold:text-4xl ipad:text-5xl trifold:text-6xl font-bold mb-3 fold:mb-4">
                         What can I help you with?
                     </h1>
-                    <p className="text-lg text-muted-foreground mb-8">
+                    <p className="text-base fold:text-lg ipad:text-xl text-muted-foreground mb-6 fold:mb-8">
                         Explore financial news, topics, and insights
                     </p>
 
                     {/* Search Bar */}
                     <form onSubmit={handleSearch} className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 fold:w-5 fold:h-5 text-muted-foreground" />
                         <Input
                             type="text"
                             placeholder="Search financial news, topics, or sources..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-12 pr-4 py-6 text-lg rounded-full"
+                            className="pl-10 fold:pl-12 pr-4 py-5 fold:py-6 text-base fold:text-lg rounded-full"
                         />
                     </form>
                 </div>
 
                 {/* Content Topics */}
-                <div className="mb-16">
-                    <div className="flex items-center gap-2 mb-6">
-                        <Sparkles className="w-5 h-5 text-primary" />
-                        <h2 className="text-2xl font-bold">Content Topics</h2>
+                <div className="mb-12 fold:mb-16">
+                    <div className="flex items-center gap-2 mb-4 fold:mb-6">
+                        <Sparkles className="w-4 h-4 fold:w-5 fold:h-5 text-primary" />
+                        <h2 className="text-xl fold:text-2xl ipad:text-3xl font-bold">Content Topics</h2>
                     </div>
 
                     {loading ? (
-                        <div className="flex flex-wrap gap-2 mb-4 rounded-full">
+                        <div className="scroll-fold gap-2 mb-4 rounded-full">
                             {Array.from({ length: 15 }).map((_, idx) => (
-                                <Skeleton key={idx} className="h-9 w-24 rounded-full" />
+                                <Skeleton key={idx} className="h-8 fold:h-9 w-20 fold:w-24 rounded-full flex-shrink-0" />
                             ))}
                         </div>
                     ) : (
-                        <div className="flex flex-wrap gap-2 mb-4">
-
+                        <div className="scroll-fold gap-2 mb-4">
                             {trendingTopics.slice(0, 20).map((topic, idx) => (
                                 <Link key={idx} href={`/feed?primaryTopics=${encodeURIComponent(topic)}`}>
                                     <Badge
                                         variant="secondary"
-                                        className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize rounded-full"
+                                        className="px-3 fold:px-4 py-1.5 fold:py-2 text-xs fold:text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors capitalize rounded-full flex-shrink-0"
                                     >
                                         {topic}
                                     </Badge>
                                 </Link>
-                            ))}<Link href="/feed">
-                                <Badge variant="outline" className="px-4 py-2 text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors">
+                            ))}
+                            <Link href="/feed">
+                                <Badge variant="outline" className="px-3 fold:px-4 py-1.5 fold:py-2 text-xs fold:text-sm cursor-pointer hover:bg-primary hover:text-primary-foreground transition-colors flex-shrink-0">
                                     See All Topics
                                 </Badge>
                             </Link>
@@ -175,20 +175,20 @@ export function ExplorePage() {
 
                 {/* Topic Categories */}
                 <div>
-                    <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-6">
+                    <h2 className="text-xs fold:text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-4 fold:mb-6">
                         Topic Categories
                     </h2>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-10">
+                    <div className="grid grid-cols-1 fold:grid-cols-2 ipad:grid-cols-2 trifold:grid-cols-3 gap-x-8 fold:gap-x-12 gap-y-8 fold:gap-y-10">
                         {TOPIC_CATEGORIES.map((category, idx) => (
                             <div key={idx}>
-                                <h3 className="text-lg font-bold mb-4">{category.name}</h3>
-                                <div className="space-y-3">
+                                <h3 className="text-base fold:text-lg ipad:text-xl font-bold mb-3 fold:mb-4">{category.name}</h3>
+                                <div className="space-y-2 fold:space-y-3">
                                     {category.topics.map((topic, topicIdx) => (
                                         <Link
                                             key={topicIdx}
                                             href={`/feed?primaryTopics=${encodeURIComponent(topic)}`}
-                                            className="block text-sm text-muted-foreground hover:text-foreground transition-colors"
+                                            className="block text-sm fold:text-base text-muted-foreground hover:text-foreground transition-colors tap-target"
                                         >
                                             {topic}
                                         </Link>

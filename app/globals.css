@@ -137,6 +137,20 @@
   }
 }
 
+/* Custom Device Breakpoints */
+/* 
+  Tailwind Default: sm: 640px, md: 768px, lg: 1024px, xl: 1280px, 2xl: 1536px
+  Custom additions for modern devices:
+  - fold: 540px (Fold phones unfolded, narrow tablets)
+  - ipad: 820px (iPad Mini & standard iPads in portrait)
+  - ipad-pro: 1024px (iPad Pro and large tablets)
+  - trifold: 1200px (Tri-fold phones fully unfolded)
+*/
+@custom-variant fold (width >= 540px);
+@custom-variant ipad (width >= 820px);
+@custom-variant ipad-pro (width >= 1024px);
+@custom-variant trifold (width >= 1200px);
+
 /* Utility classes for responsive improvements */
 @layer utilities {
   /* Hide scrollbar but keep functionality */
@@ -172,6 +186,44 @@
   /* Responsive aspect ratios */
   .aspect-video-mobile {
     @apply aspect-video sm:aspect-[4/3];
+  }
+
+  /* Device-specific layouts */
+  .grid-responsive {
+    @apply grid grid-cols-1 fold:grid-cols-2 ipad:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  .grid-responsive-articles {
+    @apply grid grid-cols-1 fold:grid-cols-1 ipad:grid-cols-2 trifold:grid-cols-3;
+  }
+
+  /* Responsive padding for different devices */
+  .padding-responsive {
+    @apply px-4 fold:px-6 ipad:px-8 lg:px-12;
+  }
+
+  /* Responsive text sizes */
+  .text-responsive-lg {
+    @apply text-lg fold:text-xl ipad:text-2xl;
+  }
+
+  .text-responsive-xl {
+    @apply text-xl fold:text-2xl ipad:text-3xl lg:text-4xl;
+  }
+
+  /* Fold phone specific - horizontal scroll for chips/badges */
+  .scroll-fold {
+    @apply flex overflow-x-auto scrollbar-hide fold:flex-wrap;
+  }
+
+  /* iPad specific - optimized sidebar width */
+  .sidebar-responsive {
+    @apply w-full ipad:w-64 lg:w-72 xl:w-80;
+  }
+
+  /* Tri-fold specific - multi-column layouts */
+  .columns-trifold {
+    @apply columns-1 ipad:columns-2 trifold:columns-3;
   }
 }
 
