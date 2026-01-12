@@ -213,7 +213,12 @@
 
   /* Fold phone specific - horizontal scroll for chips/badges */
   .scroll-fold {
-    @apply flex overflow-x-auto scrollbar-hide fold:flex-wrap;
+    @apply flex overflow-x-auto fold:flex-wrap;
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scroll-fold::-webkit-scrollbar {
+    display: none;
   }
 
   /* iPad specific - optimized sidebar width */
@@ -244,16 +249,5 @@
   /* Optimize rendering for images */
   img {
     @apply will-change-auto;
-  }
-}
-
-/* Utility classes */
-@layer utilities {
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
   }
 }
