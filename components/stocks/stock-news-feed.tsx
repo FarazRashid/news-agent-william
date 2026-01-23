@@ -5,10 +5,7 @@ import Link from "next/link"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Clock, TrendingUp, TrendingDown, Minus } from "lucide-react"
-import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
-import { mapArticleRowToArticle } from "@/lib/articles"
-import type { Article } from "@/lib/types"
+import { Clock } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 
 interface StockNewsFeedProps {
@@ -18,7 +15,18 @@ interface StockNewsFeedProps {
 }
 
 export function StockNewsFeed({ symbol, companyName, limit = 4 }: StockNewsFeedProps) {
-  const [articles, setArticles] = useState<Article[]>([])
+  const [articles, setArticles] = useState<
+    Array<{
+      id: number
+      headline: string
+      summary: string
+      url: string
+      datetime: number
+      source: string
+      category?: string
+      tags?: string[]
+    }>
+  >([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -28,28 +36,27 @@ export function StockNewsFeed({ symbol, companyName, limit = 4 }: StockNewsFeedP
       setError(null)
 
       try {
-        const supabase = createSupabaseBrowserClient()
-
-        // Search for articles mentioning the company or symbol
-        // This uses your existing articles database
-        const { data, error: fetchError } = await supabase
-          .from("articles")
-          .select("*")
-          .or(
-            `headline.ilike.%${companyName}%,` +
-            `headline.ilike.%${symbol}%,` +
-            `lead_paragraph.ilike.%${companyName}%,` +
-            `body.ilike.%${companyName}%`
-          )
-          .order("published_at", { ascending: false })
-          .limit(limit)
-
-        if (fetchError) throw fetchError
-
-        if (data) {
-          const mappedArticles = data.map(mapArticleRowToArticle)
-          setArticles(mappedArticles)
+        const res = await fetch(`/api/stocks/news?symbol=${encodeURIComponent(symbol)}`)
+        if (!res.ok) {
+          throw new Error(`Failed to fetch news (${res.status})`)
         }
+
+        const payload = (await res.json()) as {
+          symbol: string
+          news: Array<{
+            id: number
+            category: string
+            datetime: number
+            headline: string
+            source: string
+            summary: string
+            url: string
+            tags?: string[]
+          }>
+        }
+
+        const items = Array.isArray(payload.news) ? payload.news.slice(0, limit) : []
+        setArticles(items)
       } catch (err: any) {
         console.error("Error loading stock news:", err)
         setError(err.message || "Failed to load news")
@@ -95,90 +102,69 @@ export function StockNewsFeed({ symbol, companyName, limit = 4 }: StockNewsFeedP
         <div className="max-w-md mx-auto">
           <h3 className="text-lg fold:text-xl font-bold mb-2">No Recent News</h3>
           <p className="text-muted-foreground mb-4">
-            No news articles found mentioning {companyName} ({symbol}) in our database yet.
-          </p>
-          <p className="text-sm text-muted-foreground">
-            💡 As articles are added to the system, company mentions will automatically appear here.
+            No recent news found for {companyName} ({symbol}).
           </p>
         </div>
       </Card>
     )
   }
 
-  const getSentimentIcon = (sentiment?: string) => {
-    switch (sentiment?.toLowerCase()) {
-      case "positive":
-      case "bullish":
-        return <TrendingUp className="w-4 h-4 text-green-600 dark:text-green-400" />
-      case "negative":
-      case "bearish":
-        return <TrendingDown className="w-4 h-4 text-red-600 dark:text-red-400" />
-      default:
-        return <Minus className="w-4 h-4 text-muted-foreground" />
-    }
-  }
-
   return (
     <div className="space-y-4 fold:space-y-5">
       {articles.map((article) => (
-        <Link key={article.id} href={`/article/${article.id}`}>
+        <Link key={article.id} href={article.url} target="_blank" rel="noopener noreferrer">
           <Card className="p-4 mt-2 fold:p-5 hover:border-primary hover:shadow-md transition-all cursor-pointer group">
             <div className="space-y-2 fold:space-y-3">
-              {/* Title */}
               <h3 className="text-base fold:text-lg font-semibold leading-tight group-hover:text-primary transition-colors line-clamp-2">
-                {article.title}
+                {article.headline}
               </h3>
 
-              {/* Description */}
-              {article.description && (
+              {article.summary && (
                 <p className="text-sm fold:text-base text-muted-foreground line-clamp-2">
-                  {article.description}
+                  {article.summary}
                 </p>
               )}
 
-              {/* Metadata */}
               <div className="flex flex-wrap items-center gap-2 fold:gap-3 text-xs fold:text-sm">
-                {/* Source */}
                 <div className="flex items-center gap-1.5">
                   <div className="w-5 h-4 fold:w-6 fold:h-5 rounded bg-primary text-primary-foreground flex items-center justify-center text-xs font-semibold">
-                    {article.source.logo}
+                    {article.source?.slice(0, 1)?.toUpperCase() || "N"}
                   </div>
-                  <span className="font-medium">{article.source.name}</span>
+                  <span className="font-medium">{article.source || "Unknown"}</span>
                 </div>
 
                 <span className="text-muted-foreground">•</span>
 
-                {/* Time */}
                 <div className="flex items-center gap-1 text-muted-foreground">
                   <Clock className="w-3 h-3 fold:w-4 fold:h-4" />
-                  <span>{formatDistanceToNow(article.publishedAt, { addSuffix: true })}</span>
+                  <span>
+                    {formatDistanceToNow(new Date(article.datetime * 1000), { addSuffix: true })}
+                  </span>
                 </div>
-
-                {/* Sentiment */}
-                {article.sentiment && (
-                  <>
-                    <span className="text-muted-foreground hidden fold:inline">•</span>
-                    <div className="flex items-center gap-1">
-                      {getSentimentIcon(article.sentiment)}
-                      <span className="capitalize text-muted-foreground">{article.sentiment}</span>
-                    </div>
-                  </>
-                )}
               </div>
 
-              {/* Topics */}
-              {article.topics && article.topics.length > 0 && (
+              {article.category && (
                 <div className="flex flex-wrap gap-1.5 fold:gap-2">
-                  {article.topics.slice(0, 3).map((topic, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {topic}
+                  <Badge variant="secondary" className="text-xs">
+                    {article.category}
+                  </Badge>
+
+                  {Array.isArray(article.tags) &&
+                    article.tags.slice(0, 5).map((tag) => (
+                      <Badge key={tag} variant="outline" className="text-xs">
+                        {tag}
+                      </Badge>
+                    ))}
+                </div>
+              )}
+
+              {!article.category && Array.isArray(article.tags) && article.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 fold:gap-2">
+                  {article.tags.slice(0, 6).map((tag) => (
+                    <Badge key={tag} variant="outline" className="text-xs">
+                      {tag}
                     </Badge>
                   ))}
-                  {article.topics.length > 3 && (
-                    <Badge variant="outline" className="text-xs">
-                      +{article.topics.length - 3} more
-                    </Badge>
-                  )}
                 </div>
               )}
             </div>
