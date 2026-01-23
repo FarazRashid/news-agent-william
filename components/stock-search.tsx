@@ -59,8 +59,7 @@ export default function StockSearch() {
             ...data.gainers,
             ...data.losers, 
             ...data.active,
-            ...data.trending,
-            ...data.popular // Include the popular stocks category
+            ...data.trending
           ]
           const stockMap = allStocks.reduce((acc, stock) => {
             acc[stock.symbol] = stock
