@@ -4,7 +4,7 @@ import { createContext, useContext, useState, useCallback, useMemo, useEffect, t
 import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import type { FilterState, Article, FilterCounts } from "./types"
 import { filterArticles, calculateFilterCounts, extractCategoryTokensFromArticle, canonicalizePrimaryTopic, normalizePrimarySubtopic, tokenizePrimarySubtopic } from "./filter-utils"
-import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
+import { createClient } from "@/utils/supabase/client"
 import { fetchArticlesFromSupabase } from "./articles"
 
 type SortOrder = "newest" | "oldest" | "relevant"
@@ -72,7 +72,7 @@ export function NewsProvider({ children }: { children: ReactNode }) {
   const [page, setPageState] = useState<number>(1)
   const [pageSize, setPageSizeState] = useState<number>(7)
 
-  const supabase = useMemo(() => createSupabaseBrowserClient(), [])
+  const supabase = useMemo(() => createClient(), [])
 
   // Load filters from localStorage on mount
   useEffect(() => {

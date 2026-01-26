@@ -51,7 +51,7 @@ export default function StockSearch() {
     async function fetchStockData() {
       try {
         setLoading(true)
-        const response = await fetch(`/api/stocks/dashboard`)
+        const response = await fetch(`/api/stocks/dashboard`, { cache: "no-store" })
         if (response.ok) {
           const data = await response.json()
           // Combine all stocks from all categories into a single lookup
@@ -59,7 +59,8 @@ export default function StockSearch() {
             ...data.gainers,
             ...data.losers, 
             ...data.active,
-            ...data.trending
+            ...data.trending,
+            ...(data.popular || []),
           ]
           const stockMap = allStocks.reduce((acc, stock) => {
             acc[stock.symbol] = stock

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Clock, Eye, TrendingUp } from "lucide-react"
-import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
+import { createClient } from "@/utils/supabase/client"
 import { fetchArticleById, fetchArticlesFromSupabase } from "@/lib/articles"
 import { ArticleMetadata, ArticleSEOKeywords } from "@/components/article-metadata"
 import { ArticleContextBlock } from "@/components/article-context-block"
@@ -35,7 +35,7 @@ export default function ArticleClient({ id }: { id: string }) {
 
   useEffect(() => {
     let cancelled = false
-    const supabase = createSupabaseBrowserClient()
+    const supabase = createClient()
     const load = async () => {
       setLoading(true)
       setError(null)

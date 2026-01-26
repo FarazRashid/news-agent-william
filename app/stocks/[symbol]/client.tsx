@@ -9,6 +9,7 @@ import { StockChart } from "@/components/stocks/stock-chart"
 import { StockMetrics } from "@/components/stocks/stock-metrics"
 import { StockAISummary } from "@/components/stocks/stock-ai-summary"
 import { StockNewsFeed } from "@/components/stocks/stock-news-feed"
+import { StockOwnership } from "@/components/stocks/stock-ownership"
 import { StockPageSkeleton } from "@/components/stocks/stock-page-skeleton"
 import { fetchStockData, fetchStockSummary } from "@/lib/stocks/api"
 import { generateStockMetrics } from "@/lib/stocks/utils"
@@ -141,6 +142,8 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
           {/* Left Column: Chart & About (2/3 width on larger screens) */}
           <div className="md:col-span-2 space-y-4 sm:space-y-6">
             <StockChart symbol={stockData.symbol} currentPrice={stockData.price} />
+
+            <StockOwnership symbol={stockData.symbol} />
             
             {/* Company Info Section */}
             {stockData.description && (

@@ -22,6 +22,17 @@ const STOCK_UNIVERSE = [
   "TSLA"
 ]
 
+const POPULAR_STOCKS = [
+  "AAPL",
+  "MSFT",
+  "GOOGL",
+  "AMZN",
+  "TSLA",
+  "NVDA",
+  "META",
+  "NFLX",
+]
+
 function formatVolume(volume: number): string {
   if (volume >= 1e9) {
     return `${(volume / 1e9).toFixed(1)}B`
@@ -84,13 +95,25 @@ export async function GET() {
     // Remove duplicates from stock universe first
     const uniqueStockUniverse = [...new Set(STOCK_UNIVERSE)]
     
-    // Fetch all stock data in parallel
-    const stockPromises = uniqueStockUniverse.map(symbol => 
-      fetchStockData(symbol).catch((error) => {
-        console.error(`Failed to fetch ${symbol}:`, error)
-        return null
-      })
-    )
+    // Fetch all stock data in parallel with rate limiting
+    const BATCH_SIZE = 5 // Process 5 stocks at a time to avoid rate limits
+    const stockPromises: Promise<any>[] = []
+    
+    for (let i = 0; i < uniqueStockUniverse.length; i += BATCH_SIZE) {
+      const batch = uniqueStockUniverse.slice(i, i + BATCH_SIZE)
+      const batchPromises = batch.map(symbol => 
+        fetchStockData(symbol).catch((error) => {
+          console.error(`Failed to fetch ${symbol}:`, error)
+          return null
+        })
+      )
+      stockPromises.push(...batchPromises)
+      
+      // Add small delay between batches to avoid rate limiting
+      if (i + BATCH_SIZE < uniqueStockUniverse.length) {
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+    }
 
     const results = await Promise.allSettled(stockPromises)
     const allStocks = results
@@ -127,6 +150,10 @@ export async function GET() {
       })
       .slice(0, 5)
 
+    const popular = POPULAR_STOCKS
+      .map((symbol) => allStocks.find((s) => s.symbol === symbol))
+      .filter(Boolean)
+
     // Clean up rawVolume before returning and ensure unique symbols
     const cleanStocks = (stocks: any[]) => {
       const uniqueStocks = stocks.filter((stock, index, arr) => 
@@ -139,7 +166,8 @@ export async function GET() {
       gainers: cleanStocks(gainers),
       losers: cleanStocks(losers),
       active: cleanStocks(mostActive),
-      trending: cleanStocks(trending)
+      trending: cleanStocks(trending),
+      popular: cleanStocks(popular as any[]),
     }
 
     return NextResponse.json(dashboardData)
