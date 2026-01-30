@@ -46,6 +46,14 @@ export default function StockSearch() {
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const router = useRouter()
 
+  const isValidQuote = (quoteData: any) => {
+    const timestamp = Number(quoteData?.t)
+    const price = Number(quoteData?.c)
+    if (Number.isFinite(timestamp) && timestamp > 0) return true
+    if (Number.isFinite(price) && price > 0) return true
+    return false
+  }
+
   // Fetch stock data for popular stocks
   useEffect(() => {
     async function fetchStockData() {
@@ -87,7 +95,7 @@ export default function StockSearch() {
       const quoteData = await response.json()
       
       // Validate that we have valid stock data
-      if (!quoteData.c || typeof quoteData.c !== 'number' || quoteData.c <= 0) {
+      if (!isValidQuote(quoteData)) {
         return null // Invalid stock or no price data
       }
       
@@ -99,13 +107,17 @@ export default function StockSearch() {
         name = profileData.name || symbol
       }
       
+      const price = Number(quoteData.c)
+      const change = Number(quoteData.dp)
+      const changeValue = Number(quoteData.d)
+
       return {
         symbol: quoteData.symbol || symbol.toUpperCase(),
         name,
-        price: quoteData.c,
-        change: quoteData.dp || 0,
-        changeValue: quoteData.d || 0,
-        isCustom: true
+        price: Number.isFinite(price) ? price : 0,
+        change: Number.isFinite(change) ? change : 0,
+        changeValue: Number.isFinite(changeValue) ? changeValue : 0,
+        isCustom: true,
       }
     } catch (error) {
       console.error('Failed to fetch custom stock:', error)
@@ -174,7 +186,7 @@ export default function StockSearch() {
         }
         
         const quoteData = await response.json()
-        if (!quoteData.c || typeof quoteData.c !== 'number' || quoteData.c <= 0) {
+        if (!isValidQuote(quoteData)) {
           alert(`No valid stock data found for: ${symbol}`)
           return
         }
@@ -305,4 +317,3 @@ export default function StockSearch() {
     </Card>
   )
 }
-

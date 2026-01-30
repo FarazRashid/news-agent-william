@@ -7,108 +7,109 @@ type CacheEntry = {
   fetchedAt: number
 }
 
-function parseFiledAtMs(value: string | undefined): number {
-  if (!value) return 0
-  const ms = Date.parse(value)
-  return Number.isFinite(ms) ? ms : 0
-}
-
-async function post13fHoldingsQuery(apiKey: string, body: Record<string, any>): Promise<SecApiHoldingsResponse> {
-  const res = await fetch("https://api.sec-api.io/form-13f/holdings", {
-    method: "POST",
-    headers: {
-      accept: "application/json",
-      "content-type": "application/json",
-      Authorization: apiKey,
-    },
-    cache: "no-store",
-    body: JSON.stringify(body),
-  })
-
-  const contentType = res.headers.get("content-type") || ""
-  if (!res.ok) {
-    throw new Error(`SEC API 13F holdings request failed: ${res.status} ${res.statusText}`)
-  }
-  if (!contentType.includes("application/json")) {
-    throw new Error("SEC API 13F holdings returned non-JSON response")
-  }
-
-  const data = (await res.json().catch(() => null)) as SecApiHoldingsResponse | null
-  return data ?? {}
-}
-
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000
 const ownershipCache = new Map<string, CacheEntry>()
 
-type NameCacheEntry = {
-  name: string
-  fetchedAt: number
+type EarningsfeedCompanySearchItem = {
+  cik?: number
+  name?: string
+  ticker?: string | null
 }
 
-const NAME_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000
-const filerNameCache = new Map<string, NameCacheEntry>()
-
-type SecApiHolding = {
-  ticker?: string
-  value?: number
-  shrsOrPrnAmt?: {
-    sshPrnamt?: number
-    sshPrnamtType?: string
-  }
+type EarningsfeedCompanySearchResponse = {
+  items?: EarningsfeedCompanySearchItem[]
 }
 
-type SecApiFiler = {
+type EarningsfeedCompanyResponse = {
+  cik?: number
   name?: string
 }
 
-type SecApiFiling = {
-  cik?: string
-  filedAt?: string
-  periodOfReport?: string
-  filingManager?: SecApiFiler
-  holdings?: SecApiHolding[]
+type EarningsfeedHoldingItem = {
+  issuerName?: string
+  shares?: number
+  sharesType?: string | null
+  putCall?: string | null
+  managerCik?: number | string | null
+  managerName?: string | null
+  reportPeriodDate?: string | null
+  filedAt?: string | null
 }
 
-type SecApiHoldingsResponse = {
-  data?: SecApiFiling[]
+type EarningsfeedHoldingsResponse = {
+  items?: EarningsfeedHoldingItem[]
+  nextCursor?: string | null
+  hasMore?: boolean
 }
 
-type SecApiEdgarEntitiesResponse = {
-  data?: Array<{
-    name?: string
-  }>
+type FinnhubProfileResponse = {
+  name?: string
 }
 
-async function resolveFilerNameByCik(cik: string, apiKey: string): Promise<string | null> {
-  const normalizedCik = String(cik).trim()
-  if (!normalizedCik) return null
+async function fetchFinnhubProfileName(symbol: string): Promise<string> {
+  const apiKey = process.env.FINNHUB_API_KEY
+  if (!apiKey) return ""
 
-  const cached = filerNameCache.get(normalizedCik)
-  const now = Date.now()
-  if (cached && now - cached.fetchedAt < NAME_CACHE_TTL_MS) return cached.name
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 4000)
 
-  const url = new URL("https://api.sec-api.io/edgar-entities")
-  url.searchParams.set("cik", normalizedCik)
+  try {
+    const url = new URL("https://finnhub.io/api/v1/stock/profile2")
+    url.searchParams.set("symbol", symbol)
+    url.searchParams.set("token", apiKey)
 
-  const res = await fetch(url.toString(), {
-    headers: {
-      accept: "application/json",
-      Authorization: apiKey,
-    },
-    next: { revalidate },
-  })
+    const res = await fetch(url.toString(), { signal: controller.signal })
+    if (!res.ok) return ""
+    const data = (await res.json().catch(() => null)) as FinnhubProfileResponse | null
+    return typeof data?.name === "string" ? data.name : ""
+  } catch {
+    return ""
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
 
-  if (!res.ok) return null
+async function fetchJson<T>(url: string, apiKey: string, timeoutMs = 12000): Promise<T> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  let res: Response
+  try {
+    res = await fetch(url, {
+      headers: {
+        accept: "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      cache: "no-store",
+      signal: controller.signal,
+    })
+  } catch (error: any) {
+    if (error?.name === "AbortError") {
+      throw new Error(`Earningsfeed request timed out (${url})`)
+    }
+    throw error
+  } finally {
+    clearTimeout(timeoutId)
+  }
 
   const contentType = res.headers.get("content-type") || ""
-  if (!contentType.includes("application/json")) return null
+  if (!res.ok) {
+    const body = await res.text().catch(() => "")
+    const detail = body ? ` - ${body.slice(0, 200)}` : ""
+    throw new Error(`Earningsfeed request failed: ${res.status} ${res.statusText} (${url})${detail}`)
+  }
+  if (!contentType.includes("application/json")) {
+    throw new Error("Earningsfeed returned non-JSON response")
+  }
 
-  const payload = (await res.json().catch(() => null)) as SecApiEdgarEntitiesResponse | null
-  const name = payload?.data?.[0]?.name
-  if (typeof name !== "string" || !name.trim()) return null
+  const data = (await res.json().catch(() => null)) as T | null
+  if (!data) throw new Error("Earningsfeed returned empty response")
+  return data
+}
 
-  filerNameCache.set(normalizedCik, { name: name.trim(), fetchedAt: now })
-  return name.trim()
+
+function normalizeIssuerName(value: string): string {
+  return value.replace(/[.,]/g, "").trim()
 }
 
 export async function GET(request: Request) {
@@ -119,10 +120,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Missing required query param: symbol" }, { status: 400 })
   }
 
-  const apiKey = process.env.SEC_API_KEY || process.env.SEC_API_IO_API_KEY
-  if (!apiKey) {
-    return NextResponse.json({ error: "Missing server env var: SEC_API_KEY" }, { status: 500 })
-  }
+  const apiKey = process.env.EARNINGSFEED_API_KEY
 
   const cacheKey = symbol.toUpperCase()
   const cached = ownershipCache.get(cacheKey)
@@ -139,24 +137,47 @@ export async function GET(request: Request) {
   }
 
   const normalizedSymbol = symbol.toUpperCase()
-  let latestPeriodOfReport = ""
+  let issuerName = ""
+  let profileName = ""
+  if (!apiKey) {
+    return NextResponse.json({ error: "Missing server env var: EARNINGSFEED_API_KEY" }, { status: 500 })
+  }
+
   try {
-    const head = await post13fHoldingsQuery(apiKey, {
-      query: `formType:\"13F\" AND holdings.ticker:${normalizedSymbol}`,
-      from: "0",
-      size: "1",
-      sort: [{ periodOfReport: { order: "desc" } }],
-    })
-    const first = Array.isArray(head?.data) ? head.data[0] : undefined
-    latestPeriodOfReport = first?.periodOfReport ? String(first.periodOfReport).slice(0, 10) : ""
+    profileName = await fetchFinnhubProfileName(normalizedSymbol)
+    const searchUrl = new URL("https://earningsfeed.com/api/v1/companies/search")
+    searchUrl.searchParams.set("q", normalizedSymbol)
+    const searchPayload = await fetchJson<EarningsfeedCompanySearchResponse>(searchUrl.toString(), apiKey)
+    const items = Array.isArray(searchPayload?.items) ? searchPayload.items : []
+    const exact = items.find((item) => (item?.ticker || "").toUpperCase() === normalizedSymbol)
+    const normalizedProfileName = profileName ? normalizeIssuerName(profileName).toUpperCase() : ""
+    const nameMatch = normalizedProfileName
+      ? items.find((item) => normalizeIssuerName(String(item?.name || "")).toUpperCase() === normalizedProfileName)
+      : undefined
+    const picked = exact ?? nameMatch
+    const cik = picked?.cik
+
+    if (cik) {
+      const companyUrl = `https://earningsfeed.com/api/v1/companies/${cik}`
+      const company = await fetchJson<EarningsfeedCompanyResponse>(companyUrl, apiKey)
+      issuerName = company?.name ? String(company.name) : ""
+    }
+
+    if (!issuerName && picked?.name) {
+      issuerName = String(picked.name)
+    }
+
+    if (!issuerName && profileName) {
+      issuerName = profileName
+    }
   } catch (e: any) {
     if (cached) {
       return NextResponse.json({ ...cached.payload, cached: true, stale: true })
     }
-    return NextResponse.json({ error: e?.message || "Failed to query SEC API 13F holdings" }, { status: 502 })
+    return NextResponse.json({ error: e?.message || "Failed to resolve issuer name" }, { status: 502 })
   }
 
-  if (!latestPeriodOfReport) {
+  if (!issuerName) {
     const payload = {
       symbol: normalizedSymbol,
       owners: [],
@@ -170,100 +191,107 @@ export async function GET(request: Request) {
     })
   }
 
-  const holderByCik = new Map<
-    string,
-    {
-      filedAtMs: number
-      name: string
-      share: number
-      portfolioPercent: number
-      filingDate: string
-    }
-  >()
+  const holdings: EarningsfeedHoldingItem[] = []
+  const pageLimit = 50
+  let cursor: string | null | undefined = null
+  let pages = 0
+  const maxPages = 2
+  const queryIssuerName = normalizeIssuerName(issuerName).toUpperCase() || issuerName
 
-  const pageSize = 50
-  let from = 0
   try {
     for (;;) {
-      const page = await post13fHoldingsQuery(apiKey, {
-        query: `formType:\"13F\" AND holdings.ticker:${normalizedSymbol} AND periodOfReport:${latestPeriodOfReport}`,
-        from: String(from),
-        size: String(pageSize),
-        sort: [{ filedAt: { order: "desc" } }],
-      })
+      const holdingsUrl = new URL("https://earningsfeed.com/api/v1/institutional/holdings")
+      holdingsUrl.searchParams.set("issuerName", queryIssuerName)
+      holdingsUrl.searchParams.set("limit", String(pageLimit))
+      if (cursor) holdingsUrl.searchParams.set("cursor", cursor)
 
-      const filings = Array.isArray(page?.data) ? page.data : []
-      if (filings.length === 0) break
+      const page = await fetchJson<EarningsfeedHoldingsResponse>(holdingsUrl.toString(), apiKey)
+      const items = Array.isArray(page?.items) ? page.items : []
+      holdings.push(...items)
 
-      for (const filing of filings) {
-        const cik = filing?.cik ? String(filing.cik) : ""
-        if (!cik) continue
-
-        const holdings = Array.isArray(filing?.holdings) ? filing.holdings : []
-        const holding = holdings.find((h) => (h?.ticker || "").toUpperCase() === normalizedSymbol)
-        if (!holding) continue
-
-        const share = holding?.shrsOrPrnAmt?.sshPrnamt
-        const shareType = holding?.shrsOrPrnAmt?.sshPrnamtType
-        if (typeof share !== "number" || share <= 0) continue
-        if (typeof shareType === "string" && shareType !== "SH") continue
-
-        const positionValue = typeof holding?.value === "number" && holding.value > 0 ? holding.value : 0
-        let totalValue = 0
-        for (const h of holdings) {
-          const v = h?.value
-          if (typeof v === "number" && v > 0) totalValue += v
-        }
-        const portfolioPercent = totalValue > 0 ? (positionValue / totalValue) * 100 : 0
-
-        const filedAtMs = parseFiledAtMs(filing?.filedAt)
-        const existing = holderByCik.get(cik)
-        if (existing && existing.filedAtMs >= filedAtMs) continue
-
-        holderByCik.set(cik, {
-          filedAtMs,
-          name: filing?.filingManager?.name || cik,
-          share,
-          portfolioPercent,
-          filingDate: latestPeriodOfReport,
-        })
-      }
-
-      from += pageSize
-      if (filings.length < pageSize) break
-      if (from >= 10000) break
+      cursor = page?.nextCursor || null
+      pages += 1
+      if (!page?.hasMore || !cursor) break
+      if (pages >= maxPages) break
     }
   } catch (e: any) {
     if (cached) {
       return NextResponse.json({ ...cached.payload, cached: true, stale: true })
     }
-    return NextResponse.json({ error: e?.message || "Failed to query SEC API 13F holdings" }, { status: 502 })
+    return NextResponse.json({ error: e?.message || "Failed to query holdings" }, { status: 502 })
   }
 
-  const ownersWithCik = Array.from(holderByCik.entries()).map(([cik, row]) => ({
-    cik,
-    name: row.name,
-    share: row.share,
-    change: 0,
-    portfolioPercent: row.portfolioPercent,
-    filingDate: row.filingDate,
-  }))
+  if (holdings.length === 0 && queryIssuerName !== issuerName) {
+      try {
+        const fallbackUrl = new URL("https://earningsfeed.com/api/v1/institutional/holdings")
+        fallbackUrl.searchParams.set("issuerName", issuerName)
+        fallbackUrl.searchParams.set("limit", String(pageLimit))
+        const page = await fetchJson<EarningsfeedHoldingsResponse>(fallbackUrl.toString(), apiKey)
+        const items = Array.isArray(page?.items) ? page.items : []
+        holdings.push(...items)
+      } catch (fallbackError: any) {
+        if (cached) {
+          return NextResponse.json({ ...cached.payload, cached: true, stale: true })
+        }
+        return NextResponse.json({ error: fallbackError?.message || "Failed to query holdings" }, { status: 502 })
+      }
+  }
 
-  const topOwnersWithCik = ownersWithCik.sort((a, b) => b.share - a.share).slice(0, 10)
+  const holderByManager = new Map<
+    string,
+    {
+      name: string
+      share: number
+      filingDate: string
+      filedAtMs: number
+    }
+  >()
 
-  const resolvedTopOwners = await Promise.all(
-    topOwnersWithCik.map(async (o) => {
-      if (o.name !== o.cik) return o
-      if (!o.cik) return o
-      const resolved = await resolveFilerNameByCik(o.cik, apiKey)
-      return resolved ? { ...o, name: resolved } : o
-    })
-  )
+  for (const row of holdings) {
+    const shares = row?.shares
+    const sharesType = row?.sharesType
+    const putCall = row?.putCall
+    if (typeof shares !== "number" || shares <= 0) continue
+    if (typeof sharesType === "string" && sharesType !== "SH") continue
+    if (typeof putCall === "string" && putCall.trim()) continue
 
-  const topOwners = resolvedTopOwners.map(({ cik: _cik, ...rest }) => rest)
+    const name = row?.managerName ? String(row.managerName) : row?.managerCik ? String(row.managerCik) : ""
+    if (!name) continue
+
+    const filingDate = row?.reportPeriodDate ? String(row.reportPeriodDate).slice(0, 10) : ""
+    const filedAtMs = row?.filedAt ? Date.parse(String(row.filedAt)) : 0
+    const existing = holderByManager.get(name)
+
+    if (!existing) {
+      holderByManager.set(name, {
+        name,
+        share: shares,
+        filingDate,
+        filedAtMs: Number.isFinite(filedAtMs) ? filedAtMs : 0,
+      })
+      continue
+    }
+
+    existing.share += shares
+    if (Number.isFinite(filedAtMs) && filedAtMs > existing.filedAtMs) {
+      existing.filedAtMs = filedAtMs
+      if (filingDate) existing.filingDate = filingDate
+    }
+  }
+
+  const topOwners = Array.from(holderByManager.values())
+    .sort((a, b) => b.share - a.share)
+    .slice(0, 10)
+    .map((row) => ({
+      name: row.name,
+      share: row.share,
+      change: 0,
+      portfolioPercent: 0,
+      filingDate: row.filingDate,
+    }))
 
   const payload = {
-    symbol: symbol.toUpperCase(),
+    symbol: normalizedSymbol,
     owners: topOwners,
     updatedAt: new Date().toISOString(),
   }
