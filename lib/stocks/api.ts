@@ -493,71 +493,49 @@ function getIntervalForTimeRange(timeRange: TimeRange): number {
  */
 export async function fetchStockSummary(symbol: string, stockData: StockData): Promise<StockSummary> {
   try {
-    // Fetch recent news for the stock
-    const newsUrl =
+    const summaryUrl =
       typeof window === "undefined"
         ? (() => {
             const base = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"
-            const url = new URL("/api/stocks/news", base)
+            const url = new URL("/api/stocks/summary", base)
             url.searchParams.set("symbol", symbol)
             return url.toString()
           })()
-        : `/api/stocks/news?symbol=${encodeURIComponent(symbol)}`
+        : `/api/stocks/summary?symbol=${encodeURIComponent(symbol)}`
 
-    const newsRes = await fetch(newsUrl)
-    
-    if (!newsRes.ok) {
-      throw new Error(`Failed to fetch news for ${symbol}`)
+    const res = await fetch(summaryUrl, { cache: "no-store" })
+    if (!res.ok) {
+      throw new Error(`Summary API failed: ${res.status}`)
     }
 
-    const newsData = (await newsRes.json()) as {
+    const summaryData = (await res.json()) as {
       symbol: string
-      news: Array<{
-        id: number
-        category: string
-        datetime: number
-        headline: string
-        image: string
-        related: string
-        source: string
-        summary: string
-        url: string
-      }>
-      from: string
-      to: string
+      summary: string
+      sentiment: "bullish" | "bearish" | "neutral"
+      keyFactors: string[]
+      riskFactors?: string[]
+      lastUpdated: string
     }
 
-    const news = newsData.news || []
-    
-    // Determine sentiment based on stock performance and news headlines
-    const priceSentiment = stockData.changePercent > 2 ? "bullish" : stockData.changePercent < -2 ? "bearish" : "neutral"
-    
-    // Analyze news headlines for sentiment keywords
-    const newsSentiment = analyzeNewsSentiment(news)
-    const sentiment = newsSentiment || priceSentiment
-
-    // Generate summary based on actual news
-    const summary = generateSummaryFromNews(symbol, stockData, news, sentiment)
-    
-    // Extract key factors from news
-    const keyFactors = extractKeyFactors(news, sentiment)
-    
-    // Generate risk factors based on news content
-    const riskFactors = extractRiskFactors(news)
+    return {
+      symbol: summaryData.symbol,
+      summary: summaryData.summary,
+      sentiment: summaryData.sentiment,
+      keyFactors: summaryData.keyFactors || [],
+      riskFactors: summaryData.riskFactors || [],
+      lastUpdated: new Date(summaryData.lastUpdated),
+    }
+  } catch (error) {
+    console.warn(`Failed to fetch summary for ${symbol}, showing placeholder:`, error)
 
     return {
       symbol,
-      summary,
-      sentiment,
-      keyFactors,
-      riskFactors,
-      lastUpdated: new Date(),
+      summary: "Summary is being generated. Please check back soon.",
+      sentiment: "neutral",
+      keyFactors: ["Awaiting latest market data", "Analyzing recent news", "Generating AI insights"],
+      riskFactors: [],
+      lastUpdated: new Date(Date.now() - 9 * 60 * 60 * 1000),
     }
-  } catch (error) {
-    console.warn(`Failed to generate real summary for ${symbol}, using fallback:`, error)
-    
-    // Fallback to mock data if news fetch fails
-    return generateMockSummary(symbol, stockData)
   }
 }
 

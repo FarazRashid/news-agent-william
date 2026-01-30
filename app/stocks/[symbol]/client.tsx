@@ -51,6 +51,36 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
     loadStockData()
   }, [symbol])
 
+  useEffect(() => {
+    if (!stockData || !summary) return
+
+    const isStale = Date.now() - summary.lastUpdated.getTime() > 8 * 60 * 60 * 1000
+    if (!isStale) return
+
+    const POLL_INTERVAL_MS = 30000
+    let cancelled = false
+    let intervalId: ReturnType<typeof setInterval> | null = null
+
+    const poll = async () => {
+      try {
+        const updated = await fetchStockSummary(symbol, stockData)
+        if (!cancelled) {
+          setSummary(updated)
+        }
+      } catch {
+        // keep polling on transient errors
+      }
+    }
+
+    void poll()
+    intervalId = setInterval(poll, POLL_INTERVAL_MS)
+
+    return () => {
+      cancelled = true
+      if (intervalId) clearInterval(intervalId)
+    }
+  }, [symbol, stockData, summary?.lastUpdated?.getTime()])
+
   const handleToggleWatchlist = () => {
     setIsWatchlisted(!isWatchlisted)
     // TODO: Implement actual watchlist functionality with database
@@ -105,6 +135,9 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
   }
 
   const metrics = generateStockMetrics(stockData)
+  const isSummaryStale = summary
+    ? Date.now() - new Date(summary.lastUpdated).getTime() > 8 * 60 * 60 * 1000
+    : false
 
   return (
     <div className="min-h-screen bg-background">
@@ -210,7 +243,7 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
 
           {/* Right Column: AI Summary & Metrics Sidebar (1/3 width on larger screens) */}
           <div className="md:col-span-1 space-y-4 sm:space-y-6">
-            {summary && <StockAISummary summary={summary} />}
+            {summary && <StockAISummary summary={summary} isUpdating={isSummaryStale} />}
             <StockMetrics metrics={metrics} />
           </div>
         </div>

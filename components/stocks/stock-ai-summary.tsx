@@ -10,9 +10,10 @@ import { formatDistanceToNow } from "date-fns"
 interface StockAISummaryProps {
   summary: StockSummary
   loading?: boolean
+  isUpdating?: boolean
 }
 
-export function StockAISummary({ summary, loading = false }: StockAISummaryProps) {
+export function StockAISummary({ summary, loading = false, isUpdating = false }: StockAISummaryProps) {
   if (loading) {
     return (
       <Card className="p-4 fold:p-5 ipad:p-6">
@@ -48,6 +49,16 @@ export function StockAISummary({ summary, loading = false }: StockAISummaryProps
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap mb-1">
             <h3 className="text-base fold:text-lg font-bold">AI Market Summary</h3>
+            {isUpdating && (
+              <>
+                <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                  Stale
+                </Badge>
+                <Badge variant="secondary" className="text-[10px] uppercase tracking-wide">
+                  Refreshing
+                </Badge>
+              </>
+            )}
             <Badge variant={getSentimentBadgeVariant(summary.sentiment)} className="capitalize">
               <SentimentIcon className="w-3 h-3 mr-1" />
               {summary.sentiment}
