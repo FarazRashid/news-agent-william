@@ -534,7 +534,7 @@ export async function fetchStockSummary(symbol: string, stockData: StockData): P
       sentiment: "neutral",
       keyFactors: ["Awaiting latest market data", "Analyzing recent news", "Generating AI insights"],
       riskFactors: [],
-      lastUpdated: new Date(Date.now() - 9 * 60 * 60 * 1000),
+      lastUpdated: new Date(),
     }
   }
 }

@@ -42,6 +42,32 @@ type EarningsfeedHoldingsResponse = {
   hasMore?: boolean
 }
 
+type FinnhubProfileResponse = {
+  name?: string
+}
+
+async function fetchFinnhubProfileName(symbol: string): Promise<string> {
+  const apiKey = process.env.FINNHUB_API_KEY
+  if (!apiKey) return ""
+
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 4000)
+
+  try {
+    const url = new URL("https://finnhub.io/api/v1/stock/profile2")
+    url.searchParams.set("symbol", symbol)
+    url.searchParams.set("token", apiKey)
+
+    const res = await fetch(url.toString(), { signal: controller.signal })
+    if (!res.ok) return ""
+    const data = (await res.json().catch(() => null)) as FinnhubProfileResponse | null
+    return typeof data?.name === "string" ? data.name : ""
+  } catch {
+    return ""
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
 
 async function fetchJson<T>(url: string, apiKey: string, timeoutMs = 12000): Promise<T> {
   const controller = new AbortController()
@@ -112,17 +138,23 @@ export async function GET(request: Request) {
 
   const normalizedSymbol = symbol.toUpperCase()
   let issuerName = ""
+  let profileName = ""
   if (!apiKey) {
     return NextResponse.json({ error: "Missing server env var: EARNINGSFEED_API_KEY" }, { status: 500 })
   }
 
   try {
+    profileName = await fetchFinnhubProfileName(normalizedSymbol)
     const searchUrl = new URL("https://earningsfeed.com/api/v1/companies/search")
     searchUrl.searchParams.set("q", normalizedSymbol)
     const searchPayload = await fetchJson<EarningsfeedCompanySearchResponse>(searchUrl.toString(), apiKey)
     const items = Array.isArray(searchPayload?.items) ? searchPayload.items : []
     const exact = items.find((item) => (item?.ticker || "").toUpperCase() === normalizedSymbol)
-    const picked = exact ?? items[0]
+    const normalizedProfileName = profileName ? normalizeIssuerName(profileName).toUpperCase() : ""
+    const nameMatch = normalizedProfileName
+      ? items.find((item) => normalizeIssuerName(String(item?.name || "")).toUpperCase() === normalizedProfileName)
+      : undefined
+    const picked = exact ?? nameMatch
     const cik = picked?.cik
 
     if (cik) {
@@ -133,6 +165,10 @@ export async function GET(request: Request) {
 
     if (!issuerName && picked?.name) {
       issuerName = String(picked.name)
+    }
+
+    if (!issuerName && profileName) {
+      issuerName = profileName
     }
   } catch (e: any) {
     if (cached) {

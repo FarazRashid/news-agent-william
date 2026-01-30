@@ -32,11 +32,8 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
       setError(null)
 
       try {
-        // Fetch stock data and summary in parallel
-        const [data, summaryData] = await Promise.all([
-          fetchStockData(symbol),
-          fetchStockData(symbol).then((data) => fetchStockSummary(symbol, data)),
-        ])
+        const data = await fetchStockData(symbol)
+        const summaryData = await fetchStockSummary(symbol, data)
 
         setStockData(data)
         setSummary(summaryData)
@@ -57,27 +54,44 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
     const isStale = Date.now() - summary.lastUpdated.getTime() > 8 * 60 * 60 * 1000
     if (!isStale) return
 
-    const POLL_INTERVAL_MS = 30000
+    const BASE_DELAY_MS = 30000
+    const MAX_DELAY_MS = 5 * 60 * 1000
+    const MAX_ATTEMPTS = 5
     let cancelled = false
-    let intervalId: ReturnType<typeof setInterval> | null = null
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+    let attempts = 0
+
+    const scheduleNext = (delay: number) => {
+      if (cancelled) return
+      timeoutId = setTimeout(() => {
+        void poll()
+      }, delay)
+    }
 
     const poll = async () => {
+      attempts += 1
+
       try {
         const updated = await fetchStockSummary(symbol, stockData)
-        if (!cancelled) {
-          setSummary(updated)
-        }
+        if (cancelled) return
+        setSummary(updated)
+
+        const updatedIsStale = Date.now() - updated.lastUpdated.getTime() > 8 * 60 * 60 * 1000
+        if (!updatedIsStale) return
       } catch {
-        // keep polling on transient errors
+        // keep trying on transient errors
       }
+
+      if (attempts >= MAX_ATTEMPTS) return
+      const nextDelay = Math.min(BASE_DELAY_MS * 2 ** (attempts - 1), MAX_DELAY_MS)
+      scheduleNext(nextDelay)
     }
 
     void poll()
-    intervalId = setInterval(poll, POLL_INTERVAL_MS)
 
     return () => {
       cancelled = true
-      if (intervalId) clearInterval(intervalId)
+      if (timeoutId) clearTimeout(timeoutId)
     }
   }, [symbol, stockData, summary?.lastUpdated?.getTime()])
 

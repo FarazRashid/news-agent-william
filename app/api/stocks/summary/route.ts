@@ -180,7 +180,7 @@ async function acquireRefreshLock(supabase: Awaited<ReturnType<typeof createClie
       .maybeSingle<RefreshLockRow>()
 
     if (error) {
-      return true
+      return false
     }
 
     const refreshUntil = data?.refreshing_until ? Date.parse(data.refreshing_until) : 0
@@ -195,7 +195,7 @@ async function acquireRefreshLock(supabase: Awaited<ReturnType<typeof createClie
 
     return !upsertError
   } catch {
-    return true
+    return false
   }
 }
 
