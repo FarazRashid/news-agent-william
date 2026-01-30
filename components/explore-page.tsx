@@ -8,7 +8,7 @@ import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { createClient as createSupabaseBrowserClient } from "@/utils/supabase/client"
+import { createClient } from "@/utils/supabase/client"
 import type { Article } from "@/lib/types"
 import { mapArticleRowToArticle } from "@/lib/articles"
 import StockSearch from "@/components/stock-search"
@@ -48,10 +48,15 @@ export function ExplorePage() {
 
     // Fetch only topics for trending topics display (optimized query)
     useEffect(() => {
-        const supabase = createSupabaseBrowserClient()
+        const supabase = createClient()
         const fetchRecentArticles = async () => {
             setLoading(true)
             try {
+                // Helpful runtime check in case NEXT_PUBLIC env vars aren't being injected
+                if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+                    throw new Error("Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY")
+                }
+
                 const { data, error } = await supabase
                     .from("articles")
                     .select("secondary_topics")
@@ -70,7 +75,30 @@ export function ExplorePage() {
                     } as any)))
                 }
             } catch (err) {
-                console.error("Error fetching articles:", err)
+                const asAny = err as any
+                const normalized = {
+                    name: asAny?.name,
+                    message: asAny?.message ?? (err instanceof Error ? err.message : undefined),
+                    code: asAny?.code,
+                    details: asAny?.details,
+                    hint: asAny?.hint,
+                    status: asAny?.status,
+                    statusText: asAny?.statusText,
+                }
+
+                // If the error isn't a PostgREST error, fall back to something stringifiable
+                const fallback = (() => {
+                    if (normalized.message || normalized.code || normalized.status) return null
+                    if (!err) return { message: "Unknown error" }
+                    if (err instanceof Error) return { name: err.name, message: err.message, stack: err.stack }
+                    try {
+                        return JSON.parse(JSON.stringify(err))
+                    } catch {
+                        return { message: String(err) }
+                    }
+                })()
+
+                console.error("Error fetching articles:", fallback ?? normalized)
             } finally {
                 setLoading(false)
             }
