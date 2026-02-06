@@ -2,7 +2,17 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { TrendingUp, TrendingDown, Plus, Trash2, Star, ArrowLeft } from "lucide-react"
+import {
+  TrendingUp,
+  TrendingDown,
+  Plus,
+  Trash2,
+  Star,
+  ArrowLeft,
+  Columns3,
+  CheckSquare,
+  Square,
+} from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -23,6 +33,9 @@ import {
   addSymbolToWatchlist,
   removeSymbolFromWatchlist,
 } from "@/lib/stocks/watchlist"
+import { fetchStockData } from "@/lib/stocks/api"
+import type { StockData } from "@/lib/stocks/types"
+import { StockComparisonTable } from "@/components/stocks/stock-comparison-table"
 
 type WatchlistItem = {
   symbol: string
@@ -57,6 +70,10 @@ export default function StockWatchlist() {
   const [newSymbol, setNewSymbol] = useState("")
   const [isAdding, setIsAdding] = useState(false)
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([])
+  const [compareStocks, setCompareStocks] = useState<StockData[]>([])
+  const [compareLoading, setCompareLoading] = useState(false)
+  const [compareError, setCompareError] = useState<string | null>(null)
 
   // Load watchlist from session storage on mount
   useEffect(() => {
@@ -81,6 +98,46 @@ export default function StockWatchlist() {
   const removeStock = (symbol: string) => {
     removeSymbolFromWatchlist(symbol)
     refreshWatchlist()
+  }
+
+  const toggleSelected = (symbol: string) => {
+    setSelectedForCompare((prev) => {
+      const exists = prev.includes(symbol)
+      const next = exists ? prev.filter((s) => s !== symbol) : [...prev, symbol]
+
+      setCompareStocks((prevStocks) =>
+        prevStocks.filter((stock) => next.includes(stock.symbol)),
+      )
+
+      return next
+    })
+  }
+
+  const loadComparisonData = async () => {
+    const symbols = Array.from(
+      new Set(selectedForCompare.map((s) => s.toUpperCase())),
+    )
+    if (symbols.length < 2) {
+      setCompareError("Select at least two stocks to compare.")
+      return
+    }
+
+    try {
+      setCompareLoading(true)
+      setCompareError(null)
+      const data = await Promise.all(
+        symbols.map((symbol) => fetchStockData(symbol)),
+      )
+      setCompareStocks(data)
+    } catch (err: any) {
+      console.error("Failed to load comparison data:", err)
+      setCompareStocks([])
+      setCompareError(
+        err.message || "Unable to load comparison data for selected stocks.",
+      )
+    } finally {
+      setCompareLoading(false)
+    }
   }
 
   return (
@@ -186,6 +243,7 @@ export default function StockWatchlist() {
             {watchlist.map(({ symbol }) => {
               const info = getStockInfo(symbol)
               const isPositive = info.change >= 0
+              const isSelected = selectedForCompare.includes(symbol)
 
               return (
                 <Card key={symbol} className="p-4 fold:p-6 hover:shadow-lg transition-all">
@@ -198,6 +256,15 @@ export default function StockWatchlist() {
                         {info.name}
                       </p>
                     </Link>
+                    <Button
+                      variant={isSelected ? "default" : "outline"}
+                      size="xs"
+                      className="ml-2 gap-1 rounded-full px-2 py-1 text-[11px]"
+                      onClick={() => toggleSelected(symbol)}
+                    >
+                      <Columns3 className="h-3 w-3" />
+                      {isSelected ? "Selected" : "Compare"}
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button
@@ -259,6 +326,7 @@ export default function StockWatchlist() {
             {watchlist.map(({ symbol }) => {
               const info = getStockInfo(symbol)
               const isPositive = info.change >= 0
+              const isSelected = selectedForCompare.includes(symbol)
 
               return (
                 <Card key={symbol} className="p-3 fold:p-4 hover:shadow-md transition-all">
@@ -340,11 +408,95 @@ export default function StockWatchlist() {
                           View
                         </Button>
                       </Link>
+                      <Button
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        className="ml-1 gap-1 rounded-full px-2 py-1 text-xs"
+                        onClick={() => toggleSelected(symbol)}
+                      >
+                        <Columns3 className="h-3 w-3" />
+                        {isSelected ? "Selected" : "Compare"}
+                      </Button>
                     </div>
                   </div>
                 </Card>
               )
             })}
+          </div>
+        )}
+
+        {/* Comparison toolbar & table */}
+        {watchlist.length > 0 && (
+          <div className="mt-8 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h3 className="font-bold text-base sm:text-lg">Compare watchlist stocks</h3>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Select at least two symbols above, then generate an interactive side-by-side view.
+                </p>
+              </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {selectedForCompare.length} selected
+              </Badge>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  if (selectedForCompare.length === watchlist.length) {
+                    setSelectedForCompare([])
+                    setCompareStocks([])
+                    setCompareError(null)
+                  } else {
+                    setSelectedForCompare(watchlist.map((w) => w.symbol))
+                  }
+                }}
+                className="gap-1"
+              >
+                {selectedForCompare.length === watchlist.length ? (
+                  <>
+                    <CheckSquare className="h-3 w-3" />
+                    Deselect all
+                  </>
+                ) : (
+                  <>
+                    <Square className="h-3 w-3" />
+                    Select all
+                  </>
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="default"
+                disabled={compareLoading || selectedForCompare.length < 2}
+                onClick={loadComparisonData}
+              >
+                {compareLoading ? "Loading comparison..." : "Compare Selected"}
+              </Button>
+              {selectedForCompare.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setSelectedForCompare([])
+                    setCompareStocks([])
+                    setCompareError(null)
+                  }}
+                >
+                  Clear Selection
+                </Button>
+              )}
+            </div>
+            </div>
+            {compareError && (
+              <p className="text-xs sm:text-sm text-destructive">{compareError}</p>
+            )}
+            {compareStocks.length >= 2 && (
+              <StockComparisonTable
+                stocks={compareStocks}
+                title="Watchlist comparison"
+              />
+            )}
           </div>
         )}
 
