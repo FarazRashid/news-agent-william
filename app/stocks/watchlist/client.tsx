@@ -37,10 +37,26 @@ import { fetchStockData } from "@/lib/stocks/api"
 import type { StockData } from "@/lib/stocks/types"
 import { StockComparisonTable } from "@/components/stocks/stock-comparison-table"
 
+type SymbolSuggestion = {
+  symbol: string
+  name?: string
+}
+
 type WatchlistItem = {
   symbol: string
   addedAt: Date
 }
+
+const POPULAR_SYMBOLS: SymbolSuggestion[] = [
+  { symbol: "AAPL", name: "Apple Inc." },
+  { symbol: "MSFT", name: "Microsoft Corporation" },
+  { symbol: "GOOGL", name: "Alphabet Inc." },
+  { symbol: "AMZN", name: "Amazon.com Inc." },
+  { symbol: "TSLA", name: "Tesla Inc." },
+  { symbol: "NVDA", name: "NVIDIA Corporation" },
+  { symbol: "META", name: "Meta Platforms Inc." },
+  { symbol: "NFLX", name: "Netflix Inc." },
+]
 
 // Mock function to get basic stock info - in production, use real API
 const getStockInfo = (symbol: string) => {
@@ -74,14 +90,67 @@ export default function StockWatchlist() {
   const [compareStocks, setCompareStocks] = useState<StockData[]>([])
   const [compareLoading, setCompareLoading] = useState(false)
   const [compareError, setCompareError] = useState<string | null>(null)
+  const [allSymbolSuggestions, setAllSymbolSuggestions] = useState<
+    SymbolSuggestion[]
+  >([])
+  const [filteredSymbolSuggestions, setFilteredSymbolSuggestions] = useState<
+    SymbolSuggestion[]
+  >([])
 
   // Load watchlist from session storage on mount
   useEffect(() => {
     setWatchlist(loadWatchlistFromSession())
   }, [])
 
+  // Seed suggestions with popular symbols + anything in the user's watchlist
+  useEffect(() => {
+    const fromWatchlist = getWatchlist().map<SymbolSuggestion>((item) => ({
+      symbol: item.symbol,
+    }))
+
+    const merged = new Map<string, SymbolSuggestion>()
+    for (const entry of [...POPULAR_SYMBOLS, ...fromWatchlist]) {
+      const upper = entry.symbol.toUpperCase()
+      if (!merged.has(upper)) {
+        merged.set(upper, { symbol: upper, name: entry.name })
+      }
+    }
+
+    const suggestions = Array.from(merged.values())
+    setAllSymbolSuggestions(suggestions)
+    setFilteredSymbolSuggestions([])
+  }, [])
+
   const refreshWatchlist = () => {
     setWatchlist(loadWatchlistFromSession())
+  }
+
+  const handleNewSymbolChange = (value: string) => {
+    setNewSymbol(value)
+
+    const query = value.trim()
+    if (!query) {
+      setFilteredSymbolSuggestions([])
+      return
+    }
+
+    const upperQuery = query.toUpperCase()
+    const lowerQuery = query.toLowerCase()
+
+    const base = allSymbolSuggestions.length
+      ? allSymbolSuggestions
+      : POPULAR_SYMBOLS
+
+    const filtered = base
+      .filter(
+        (entry) =>
+          entry.symbol.toUpperCase().startsWith(upperQuery) ||
+          entry.symbol.toUpperCase().includes(upperQuery) ||
+          (entry.name && entry.name.toLowerCase().includes(lowerQuery)),
+      )
+      .slice(0, 8)
+
+    setFilteredSymbolSuggestions(filtered)
   }
 
   const addStock = (e: React.FormEvent) => {
@@ -92,6 +161,7 @@ export default function StockWatchlist() {
     addSymbolToWatchlist(symbol)
     refreshWatchlist()
     setNewSymbol("")
+    setFilteredSymbolSuggestions([])
     setIsAdding(false)
   }
 
@@ -200,14 +270,40 @@ export default function StockWatchlist() {
         {isAdding && (
           <Card className="p-4 mb-6">
             <form onSubmit={addStock} className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Enter stock symbol (e.g., AAPL)"
-                value={newSymbol}
-                onChange={(e) => setNewSymbol(e.target.value)}
-                className="flex-1"
-                autoFocus
-              />
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder="Search or enter symbol (e.g., AAPL)"
+                  value={newSymbol}
+                  onChange={(e) => handleNewSymbolChange(e.target.value)}
+                  className="w-full"
+                  autoFocus
+                />
+                {newSymbol.trim() && filteredSymbolSuggestions.length > 0 && (
+                  <div className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-popover text-xs sm:text-sm shadow-lg">
+                    {filteredSymbolSuggestions.map((sugg) => (
+                      <button
+                        key={sugg.symbol}
+                        type="button"
+                        className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                        onClick={() => {
+                          setNewSymbol(sugg.symbol)
+                          setFilteredSymbolSuggestions([])
+                        }}
+                      >
+                        <div className="min-w-0">
+                          <span className="font-semibold">{sugg.symbol}</span>
+                          {sugg.name && (
+                            <span className="ml-2 text-muted-foreground truncate">
+                              {sugg.name}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
               <Button type="submit" disabled={!newSymbol.trim()}>
                 Add
               </Button>
