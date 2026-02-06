@@ -6,6 +6,7 @@ type SummaryRow = {
   summary: string;
   created_at: string;
   expires_at: string | null;
+  updated_at: string;
 };
 
 type RefreshLockRow = {
@@ -254,9 +255,9 @@ export async function GET(request: Request) {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("stock_summaries")
-    .select("symbol, summary, created_at, expires_at")
+    .select("symbol, summary, created_at, expires_at, updated_at")
     .eq("symbol", normalizedSymbol)
-    .order("created_at", { ascending: false })
+    .order("updated_at", { ascending: false })
     .limit(1)
     .maybeSingle<SummaryRow>();
 
@@ -300,7 +301,7 @@ export async function GET(request: Request) {
           symbol: normalizedSymbol,
           reason,
           last_summary: data.summary,
-          last_updated: data.created_at,
+          last_updated: data.updated_at,
           data: snapshot,
         });
       })().catch(() => {});
@@ -314,7 +315,7 @@ export async function GET(request: Request) {
       sentiment: "neutral",
       keyFactors: [],
       riskFactors: [],
-      lastUpdated: data.created_at,
+      lastUpdated: data.updated_at,
     },
     {
       headers: {
