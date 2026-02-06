@@ -25,7 +25,15 @@ const TIME_PRESETS = [
  */
 export function MobileFilterSheet() {
   const [open, setOpen] = useState(false)
-  const { filters, updateFilter, resetFilters, activeFilterCount, availableCategories, filterCounts } = useNews()
+  const {
+    filters,
+    updateFilter,
+    resetFilters,
+    activeFilterCount,
+    availableCategories,
+    filterCounts,
+    availableSources,
+  } = useNews()
   const [searchInput, setSearchInput] = useState(filters.search)
 
   return (
@@ -135,36 +143,36 @@ export function MobileFilterSheet() {
             </div>
           </div>
 
-          {/* Sources */}
-          {Object.keys(filterCounts.sources).length > 0 && (
+          {/* Sources (by domain, consistent with desktop filters; always show full list) */}
+          {availableSources.length > 0 && (
             <div className="space-y-3">
               <h3 className="text-sm font-medium">Sources</h3>
               <div className="space-y-2 max-h-60 overflow-y-auto">
-                {Object.entries(filterCounts.sources)
-                  .sort(([, a], [, b]) => b - a)
-                  .slice(0, 20)
-                  .map(([source, count]) => (
-                    <div key={source} className="flex items-center space-x-2">
+                {availableSources.map((domain) => {
+                  const count = filterCounts.domains[domain] || 0
+                  return (
+                    <div key={domain} className="flex items-center space-x-2">
                       <Checkbox
-                        id={`mobile-source-${source}`}
-                        checked={filters.sources.includes(source)}
+                        id={`mobile-source-${domain}`}
+                        checked={filters.sources.includes(domain)}
                         onCheckedChange={(checked) => {
                           if (checked) {
-                            updateFilter("sources", [...filters.sources, source])
+                            updateFilter("sources", [...filters.sources, domain])
                           } else {
-                            updateFilter("sources", filters.sources.filter((s) => s !== source))
+                            updateFilter("sources", filters.sources.filter((s) => s !== domain))
                           }
                         }}
                       />
                       <label
-                        htmlFor={`mobile-source-${source}`}
-                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1"
+                        htmlFor={`mobile-source-${domain}`}
+                        className="text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer flex-1 truncate"
                       >
-                        {source}
+                        {domain}
                         <span className="ml-2 text-xs text-muted-foreground">({count})</span>
                       </label>
                     </div>
-                  ))}
+                  )
+                })}
               </div>
             </div>
           )}

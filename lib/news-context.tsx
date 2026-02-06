@@ -113,6 +113,21 @@ export function NewsProvider({ children }: { children: ReactNode }) {
     const locations = searchParams.get("locations")
     if (locations) urlFilters.locations = locations.split(",").filter(Boolean)
 
+    const people = searchParams.get("people")
+    if (people) {
+      urlFilters.entities.people = people.split(",").filter(Boolean)
+    }
+
+    const companies = searchParams.get("companies")
+    if (companies) {
+      urlFilters.entities.companies = companies.split(",").filter(Boolean)
+    }
+
+    const stockSymbols = searchParams.get("stockSymbols")
+    if (stockSymbols) {
+      urlFilters.stockSymbols = stockSymbols.split(",").filter(Boolean)
+    }
+
     const timeRange = searchParams.get("timeRange")
     if (timeRange && ["hour", "day", "week", "month", "3months", "year", "all"].includes(timeRange)) {
       urlFilters.timeRange = {
@@ -148,10 +163,13 @@ export function NewsProvider({ children }: { children: ReactNode }) {
       const params = new URLSearchParams()
 
       if (filters.search) params.set("search", filters.search)
-  if (filters.categories.length > 0) params.set("categories", filters.categories.join(","))
-  if (filters.primaryTopics.length > 0) params.set("primaryTopics", filters.primaryTopics.join(","))
+      if (filters.categories.length > 0) params.set("categories", filters.categories.join(","))
+      if (filters.primaryTopics.length > 0) params.set("primaryTopics", filters.primaryTopics.join(","))
       if (filters.sources.length > 0) params.set("sources", filters.sources.join(","))
       if (filters.locations.length > 0) params.set("locations", filters.locations.join(","))
+      if (filters.entities.people.length > 0) params.set("people", filters.entities.people.join(","))
+      if (filters.entities.companies.length > 0) params.set("companies", filters.entities.companies.join(","))
+      if (filters.stockSymbols.length > 0) params.set("stockSymbols", filters.stockSymbols.join(","))
       if (filters.timeRange.preset !== "all") params.set("timeRange", filters.timeRange.preset)
       if (sortOrder !== "newest") params.set("sort", sortOrder)
 

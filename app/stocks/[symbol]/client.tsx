@@ -11,10 +11,12 @@ import { StockMetrics } from "@/components/stocks/stock-metrics";
 import { StockAISummary } from "@/components/stocks/stock-ai-summary";
 import { StockNewsFeed } from "@/components/stocks/stock-news-feed";
 import { StockOwnership } from "@/components/stocks/stock-ownership";
+import { StockComparisonTable } from "@/components/stocks/stock-comparison-table";
 import { StockPageSkeleton } from "@/components/stocks/stock-page-skeleton";
 import { fetchStockData, fetchStockSummary } from "@/lib/stocks/api";
 import { generateStockMetrics } from "@/lib/stocks/utils";
 import {
+  getWatchlist,
   isSymbolWatchlisted,
   toggleSymbolInWatchlist,
 } from "@/lib/stocks/watchlist";
@@ -24,13 +26,39 @@ interface StockPageClientProps {
   symbol: string;
 }
 
+type SymbolSuggestion = {
+  symbol: string;
+  name?: string;
+};
+
 export function StockPageClient({ symbol }: StockPageClientProps) {
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [summary, setSummary] = useState<StockSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isWatchlisted, setIsWatchlisted] = useState(false);
+  const [compareSymbol, setCompareSymbol] = useState("");
+  const [compareStock, setCompareStock] = useState<StockData | null>(null);
+  const [compareLoading, setCompareLoading] = useState(false);
+  const [compareError, setCompareError] = useState<string | null>(null);
+  const [allSymbolSuggestions, setAllSymbolSuggestions] = useState<
+    SymbolSuggestion[]
+  >([]);
+  const [filteredSymbolSuggestions, setFilteredSymbolSuggestions] = useState<
+    SymbolSuggestion[]
+  >([]);
+
+  const POPULAR_SYMBOLS: SymbolSuggestion[] = [
+    { symbol: "AAPL", name: "Apple Inc." },
+    { symbol: "MSFT", name: "Microsoft Corporation" },
+    { symbol: "GOOGL", name: "Alphabet Inc." },
+    { symbol: "AMZN", name: "Amazon.com Inc." },
+    { symbol: "TSLA", name: "Tesla Inc." },
+    { symbol: "NVDA", name: "NVIDIA Corporation" },
+    { symbol: "META", name: "Meta Platforms Inc." },
+  ];
   const chartSectionRef = useRef<HTMLDivElement>(null);
+  const compareSectionRef = useRef<HTMLDivElement>(null);
   const [hoveredNewsTimestamp, setHoveredNewsTimestamp] = useState<
     number | null
   >(null);
@@ -61,6 +89,26 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
     // Sync local state with session-based watchlist when the symbol changes
     setIsWatchlisted(isSymbolWatchlisted(symbol));
   }, [symbol]);
+
+  useEffect(() => {
+    // Seed suggestions with popular symbols + anything in the user's watchlist
+    const fromWatchlist = getWatchlist().map<SymbolSuggestion>((item) => ({
+      symbol: item.symbol,
+    }));
+
+    const merged = new Map<string, SymbolSuggestion>();
+    for (const entry of [...POPULAR_SYMBOLS, ...fromWatchlist]) {
+      const upper = entry.symbol.toUpperCase();
+      if (!merged.has(upper)) {
+        merged.set(upper, { symbol: upper, name: entry.name });
+      }
+    }
+
+    const suggestions = Array.from(merged.values());
+    setAllSymbolSuggestions(suggestions);
+    setFilteredSymbolSuggestions([]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     if (!stockData || !summary) return;
@@ -141,6 +189,70 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
     console.log("Set price alert for:", symbol);
   };
 
+  const handleCompareSymbolChange = (value: string) => {
+    setCompareSymbol(value);
+    setCompareError(null);
+
+    const query = value.trim();
+    if (!query) {
+      setFilteredSymbolSuggestions([]);
+      return;
+    }
+
+    const upperQuery = query.toUpperCase();
+    const lowerQuery = query.toLowerCase();
+
+    const base = allSymbolSuggestions.length
+      ? allSymbolSuggestions
+      : POPULAR_SYMBOLS;
+
+    const filtered = base
+      .filter((entry) => entry.symbol.toUpperCase() !== symbol.toUpperCase())
+      .filter(
+        (entry) =>
+          entry.symbol.toUpperCase().startsWith(upperQuery) ||
+          entry.symbol.toUpperCase().includes(upperQuery) ||
+          (entry.name && entry.name.toLowerCase().includes(lowerQuery)),
+      )
+      .slice(0, 8);
+
+    setFilteredSymbolSuggestions(filtered);
+  };
+
+  const handleLoadComparison = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const target = compareSymbol.trim().toUpperCase();
+    if (!target || target === symbol.toUpperCase()) {
+      setCompareStock(null);
+      setCompareError(
+        target === symbol.toUpperCase()
+          ? "Enter a different symbol to compare against."
+          : "Enter a stock symbol to compare.",
+      );
+      return;
+    }
+
+    try {
+      setCompareLoading(true);
+      setCompareError(null);
+      const data = await fetchStockData(target);
+      setCompareStock(data);
+      setFilteredSymbolSuggestions([]);
+      if (compareSectionRef.current) {
+        compareSectionRef.current.scrollIntoView({
+          behavior: "smooth",
+          block: "start",
+        });
+      }
+    } catch (err: any) {
+      console.error("Failed to load comparison stock:", err);
+      setCompareStock(null);
+      setCompareError(err.message || "Unable to load comparison stock.");
+    } finally {
+      setCompareLoading(false);
+    }
+  };
+
   if (loading) {
     return <StockPageSkeleton />;
   }
@@ -202,6 +314,94 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
           onShare={handleShare}
           onSetAlert={handleSetAlert}
         />
+
+        {/* Inline Compare Tool */}
+        <div className="mt-4 sm:mt-6 mb-6 sm:mb-8" ref={compareSectionRef}>
+          <div className="bg-card border border-border rounded-lg p-4 sm:p-5 md:p-6 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <h2 className="text-base sm:text-lg font-semibold">
+                  Compare with another stock
+                </h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">
+                  Quickly line up {stockData.symbol} against a peer to compare price
+                  action, valuation, and profile.
+                </p>
+              </div>
+              <form
+                onSubmit={handleLoadComparison}
+                className="flex w-full sm:w-auto flex-col sm:flex-row gap-2"
+              >
+                <div className="relative w-full sm:w-56">
+                  <input
+                    type="text"
+                    placeholder="Enter symbol (e.g. MSFT)"
+                    value={compareSymbol}
+                    onChange={(e) => handleCompareSymbolChange(e.target.value)}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                  />
+                  {compareSymbol.trim() &&
+                    filteredSymbolSuggestions.length > 0 && (
+                      <div className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-popover text-xs sm:text-sm shadow-lg">
+                        {filteredSymbolSuggestions.map((sugg) => (
+                          <button
+                            key={sugg.symbol}
+                            type="button"
+                            className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                            onClick={() => {
+                              setCompareSymbol(sugg.symbol);
+                              setFilteredSymbolSuggestions([]);
+                              setCompareError(null);
+                            }}
+                          >
+                            <div className="min-w-0">
+                              <span className="font-semibold">
+                                {sugg.symbol}
+                              </span>
+                              {sugg.name && (
+                                <span className="ml-2 text-muted-foreground truncate">
+                                  {sugg.name}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                </div>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={compareLoading || !compareSymbol.trim()}
+                  className="whitespace-nowrap"
+                >
+                  {compareLoading ? "Loading..." : "Compare"}
+                </Button>
+              </form>
+            </div>
+            {compareStock && !compareError && !compareLoading && (
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                Comparing{" "}
+                <span className="font-semibold">{stockData.symbol}</span> with{" "}
+                <span className="font-semibold">
+                  {compareStock.symbol}
+                </span>{" "}
+                below.
+              </p>
+            )}
+            {compareError && (
+              <p className="text-xs sm:text-sm text-destructive">{compareError}</p>
+            )}
+          </div>
+
+          {compareStock && (
+            <StockComparisonTable
+              stocks={[stockData, compareStock]}
+              highlightSymbol={stockData.symbol}
+              title="Side‑by‑side comparison"
+            />
+          )}
+        </div>
 
         {/* Two-Column Layout: Chart + Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
