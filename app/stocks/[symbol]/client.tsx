@@ -1,11 +1,12 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef, useCallback } from "react"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { StockHeader } from "@/components/stocks/stock-header"
 import { StockChart } from "@/components/stocks/stock-chart"
+import { StockFinancialMetrics } from "@/components/stocks/stock-financial-metrics"
 import { StockMetrics } from "@/components/stocks/stock-metrics"
 import { StockAISummary } from "@/components/stocks/stock-ai-summary"
 import { StockNewsFeed } from "@/components/stocks/stock-news-feed"
@@ -25,6 +26,7 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [isWatchlisted, setIsWatchlisted] = useState(false)
+  const chartSectionRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const loadStockData = async () => {
@@ -188,7 +190,12 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           {/* Left Column: Chart & About (2/3 width on larger screens) */}
           <div className="md:col-span-2 space-y-4 sm:space-y-6">
-            <StockChart symbol={stockData.symbol} currentPrice={stockData.price} />
+            <div ref={chartSectionRef} id="stock-price-chart">
+              <StockChart symbol={stockData.symbol} currentPrice={stockData.price} />
+            </div>
+
+            {/* Financial Metrics & Charts */}
+            <StockFinancialMetrics symbol={stockData.symbol} stockData={stockData} />
 
             <StockOwnership symbol={stockData.symbol} />
             
