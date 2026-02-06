@@ -1,107 +1,118 @@
-"use client"
+"use client";
 
-import { useEffect, useState, useRef, useCallback } from "react"
-import Link from "next/link"
-import { ArrowLeft } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { StockHeader } from "@/components/stocks/stock-header"
-import { StockChart } from "@/components/stocks/stock-chart"
-import { StockFinancialMetrics } from "@/components/stocks/stock-financial-metrics"
-import { StockMetrics } from "@/components/stocks/stock-metrics"
-import { StockAISummary } from "@/components/stocks/stock-ai-summary"
-import { StockNewsFeed } from "@/components/stocks/stock-news-feed"
-import { StockOwnership } from "@/components/stocks/stock-ownership"
-import { StockPageSkeleton } from "@/components/stocks/stock-page-skeleton"
-import { fetchStockData, fetchStockSummary } from "@/lib/stocks/api"
-import { generateStockMetrics } from "@/lib/stocks/utils"
-import type { StockData, StockSummary } from "@/lib/stocks/types"
+import { useEffect, useState, useRef } from "react";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { StockHeader } from "@/components/stocks/stock-header";
+import { StockChart } from "@/components/stocks/stock-chart";
+import { StockFinancialMetrics } from "@/components/stocks/stock-financial-metrics";
+import { StockMetrics } from "@/components/stocks/stock-metrics";
+import { StockAISummary } from "@/components/stocks/stock-ai-summary";
+import { StockNewsFeed } from "@/components/stocks/stock-news-feed";
+import { StockOwnership } from "@/components/stocks/stock-ownership";
+import { StockPageSkeleton } from "@/components/stocks/stock-page-skeleton";
+import { fetchStockData, fetchStockSummary } from "@/lib/stocks/api";
+import { generateStockMetrics } from "@/lib/stocks/utils";
+import type { StockData, StockSummary } from "@/lib/stocks/types";
 
 interface StockPageClientProps {
-  symbol: string
+  symbol: string;
 }
 
 export function StockPageClient({ symbol }: StockPageClientProps) {
-  const [stockData, setStockData] = useState<StockData | null>(null)
-  const [summary, setSummary] = useState<StockSummary | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [isWatchlisted, setIsWatchlisted] = useState(false)
-  const chartSectionRef = useRef<HTMLDivElement>(null)
+  const [stockData, setStockData] = useState<StockData | null>(null);
+  const [summary, setSummary] = useState<StockSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isWatchlisted, setIsWatchlisted] = useState(false);
+  const chartSectionRef = useRef<HTMLDivElement>(null);
+  const [hoveredNewsTimestamp, setHoveredNewsTimestamp] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     const loadStockData = async () => {
-      setLoading(true)
-      setError(null)
+      setLoading(true);
+      setError(null);
 
       try {
-        const data = await fetchStockData(symbol)
-        const summaryData = await fetchStockSummary(symbol, data)
+        const data = await fetchStockData(symbol);
+        const summaryData = await fetchStockSummary(symbol, data);
 
-        setStockData(data)
-        setSummary(summaryData)
+        setStockData(data);
+        setSummary(summaryData);
       } catch (err: any) {
-        console.error("Error loading stock data:", err)
-        setError(err.message || "Failed to load stock data")
+        console.error("Error loading stock data:", err);
+        setError(err.message || "Failed to load stock data");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
+    };
 
-    loadStockData()
-  }, [symbol])
+    loadStockData();
+  }, [symbol]);
 
   useEffect(() => {
-    if (!stockData || !summary) return
+    if (!stockData || !summary) return;
 
-    const isStale = Date.now() - summary.lastUpdated.getTime() > 8 * 60 * 60 * 1000
-    if (!isStale) return
+    const isStale =
+      Date.now() - summary.lastUpdated.getTime() > 8 * 60 * 60 * 1000;
+    if (!isStale) return;
 
-    const BASE_DELAY_MS = 30000
-    const MAX_DELAY_MS = 5 * 60 * 1000
-    const MAX_ATTEMPTS = 5
-    let cancelled = false
-    let timeoutId: ReturnType<typeof setTimeout> | null = null
-    let attempts = 0
+    const BASE_DELAY_MS = 30000;
+    const MAX_DELAY_MS = 5 * 60 * 1000;
+    const MAX_ATTEMPTS = 5;
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
 
     const scheduleNext = (delay: number) => {
-      if (cancelled) return
+      if (cancelled) return;
       timeoutId = setTimeout(() => {
-        void poll()
-      }, delay)
-    }
+        void poll();
+      }, delay);
+    };
 
     const poll = async () => {
-      attempts += 1
+      attempts += 1;
 
       try {
-        const updated = await fetchStockSummary(symbol, stockData)
-        if (cancelled) return
-        setSummary(updated)
+        const updated = await fetchStockSummary(symbol, stockData);
+        if (cancelled) return;
+        setSummary(updated);
 
-        const updatedIsStale = Date.now() - updated.lastUpdated.getTime() > 8 * 60 * 60 * 1000
-        if (!updatedIsStale) return
+        const updatedIsStale =
+          Date.now() - updated.lastUpdated.getTime() > 8 * 60 * 60 * 1000;
+        if (!updatedIsStale) return;
       } catch {
         // keep trying on transient errors
       }
 
-      if (attempts >= MAX_ATTEMPTS) return
-      const nextDelay = Math.min(BASE_DELAY_MS * 2 ** (attempts - 1), MAX_DELAY_MS)
-      scheduleNext(nextDelay)
-    }
+      if (attempts >= MAX_ATTEMPTS) return;
+      const nextDelay = Math.min(
+        BASE_DELAY_MS * 2 ** (attempts - 1),
+        MAX_DELAY_MS,
+      );
+      scheduleNext(nextDelay);
+    };
 
-    void poll()
+    void poll();
 
     return () => {
-      cancelled = true
-      if (timeoutId) clearTimeout(timeoutId)
-    }
-  }, [symbol, stockData, summary?.lastUpdated?.getTime()])
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [symbol, stockData, summary?.lastUpdated?.getTime()]);
 
   const handleToggleWatchlist = () => {
-    setIsWatchlisted(!isWatchlisted)
+    setIsWatchlisted(!isWatchlisted);
     // TODO: Implement actual watchlist functionality with database
-    console.log(`${isWatchlisted ? "Removed from" : "Added to"} watchlist:`, symbol)
-  }
+    console.log(
+      `${isWatchlisted ? "Removed from" : "Added to"} watchlist:`,
+      symbol,
+    );
+  };
 
   const handleShare = () => {
     // Implement share functionality
@@ -112,21 +123,21 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
           text: `Check out ${stockData.symbol} stock - $${stockData.price} (${stockData.changePercent >= 0 ? "+" : ""}${stockData.changePercent.toFixed(2)}%)`,
           url: window.location.href,
         })
-        .catch((err) => console.error("Error sharing:", err))
+        .catch((err) => console.error("Error sharing:", err));
     } else {
       // Fallback: Copy to clipboard
-      navigator.clipboard.writeText(window.location.href)
-      console.log("Link copied to clipboard!")
+      navigator.clipboard.writeText(window.location.href);
+      console.log("Link copied to clipboard!");
     }
-  }
+  };
 
   const handleSetAlert = () => {
     // TODO: Implement price alert functionality
-    console.log("Set price alert for:", symbol)
-  }
+    console.log("Set price alert for:", symbol);
+  };
 
   if (loading) {
-    return <StockPageSkeleton />
+    return <StockPageSkeleton />;
   }
 
   if (error || !stockData) {
@@ -137,7 +148,8 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
             {error ? "Error Loading Stock" : "Stock Not Found"}
           </h1>
           <p className="text-muted-foreground mb-6">
-            {error || `Unable to find stock data for symbol: ${symbol.toUpperCase()}`}
+            {error ||
+              `Unable to find stock data for symbol: ${symbol.toUpperCase()}`}
           </p>
           <Link href="/">
             <Button>
@@ -147,13 +159,13 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
           </Link>
         </div>
       </div>
-    )
+    );
   }
 
-  const metrics = generateStockMetrics(stockData)
+  const metrics = generateStockMetrics(stockData);
   const isSummaryStale = summary
     ? Date.now() - new Date(summary.lastUpdated).getTime() > 8 * 60 * 60 * 1000
-    : false
+    : false;
 
   return (
     <div className="min-h-screen bg-background">
@@ -190,15 +202,41 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           {/* Left Column: Chart & About (2/3 width on larger screens) */}
           <div className="md:col-span-2 space-y-4 sm:space-y-6">
-            <div ref={chartSectionRef} id="stock-price-chart">
-              <StockChart symbol={stockData.symbol} currentPrice={stockData.price} />
+            <div
+              ref={chartSectionRef}
+              id="stock-price-chart"
+              className="space-y-4 sm:space-y-5"
+            >
+              <StockChart
+                symbol={stockData.symbol}
+                currentPrice={stockData.price}
+                onHoverPoint={(point) =>
+                  setHoveredNewsTimestamp(point?.timestamp ?? null)
+                }
+              />
+
+              {/* Linked News Carousel */}
+              <div className="mt-2 pb-6">
+                <div className="flex items-center justify-between mb-2 sm:mb-3">
+                  <h2 className="text-base sm:text-lg font-semibold">News</h2>
+                </div>
+                <StockNewsFeed
+                  symbol={stockData.symbol}
+                  companyName={stockData.name}
+                  limit={10}
+                  hoveredTimestamp={hoveredNewsTimestamp}
+                />
+              </div>
             </div>
 
             {/* Financial Metrics & Charts */}
-            <StockFinancialMetrics symbol={stockData.symbol} stockData={stockData} />
+            <StockFinancialMetrics
+              symbol={stockData.symbol}
+              stockData={stockData}
+            />
 
             <StockOwnership symbol={stockData.symbol} />
-            
+
             {/* Company Info Section */}
             {stockData.description && (
               <div>
@@ -209,29 +247,43 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
                   <p className="text-sm sm:text-base text-foreground leading-relaxed">
                     {stockData.description}
                   </p>
-                  
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4 pt-3 sm:pt-4 border-t border-border">
                     {stockData.sector && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Sector</p>
-                        <p className="text-sm sm:text-base font-medium">{stockData.sector}</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Sector
+                        </p>
+                        <p className="text-sm sm:text-base font-medium">
+                          {stockData.sector}
+                        </p>
                       </div>
                     )}
                     {stockData.industry && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Industry</p>
-                        <p className="text-sm sm:text-base font-medium">{stockData.industry}</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Industry
+                        </p>
+                        <p className="text-sm sm:text-base font-medium">
+                          {stockData.industry}
+                        </p>
                       </div>
                     )}
                     {stockData.ceo && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">CEO</p>
-                        <p className="text-sm sm:text-base font-medium">{stockData.ceo}</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          CEO
+                        </p>
+                        <p className="text-sm sm:text-base font-medium">
+                          {stockData.ceo}
+                        </p>
                       </div>
                     )}
                     {stockData.employees && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Employees</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Employees
+                        </p>
                         <p className="text-sm sm:text-base font-medium">
                           {stockData.employees.toLocaleString()}
                         </p>
@@ -239,13 +291,19 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
                     )}
                     {stockData.founded && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Founded</p>
-                        <p className="text-sm sm:text-base font-medium">{stockData.founded}</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Founded
+                        </p>
+                        <p className="text-sm sm:text-base font-medium">
+                          {stockData.founded}
+                        </p>
                       </div>
                     )}
                     {stockData.website && (
                       <div>
-                        <p className="text-xs text-muted-foreground mb-1">Website</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Website
+                        </p>
                         <a
                           href={stockData.website}
                           target="_blank"
@@ -264,19 +322,13 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
 
           {/* Right Column: AI Summary & Metrics Sidebar (1/3 width on larger screens) */}
           <div className="md:col-span-1 space-y-4 sm:space-y-6">
-            {summary && <StockAISummary summary={summary} isUpdating={isSummaryStale} />}
+            {summary && (
+              <StockAISummary summary={summary} isUpdating={isSummaryStale} />
+            )}
             <StockMetrics metrics={metrics} />
           </div>
         </div>
-
-        {/* News Section */}
-        <div>
-          <h2 className="text-xl sm:text-2xl md:text-3xl font-bold mb-4 sm:mb-6">
-            Latest News for {stockData.symbol}
-          </h2>
-          <StockNewsFeed symbol={stockData.symbol} companyName={stockData.name} limit={4} />
-        </div>
       </div>
     </div>
-  )
+  );
 }
