@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { ChevronDown, Search, Clock, Zap, MapPin, LinkIcon, X, MessageSquare, Send, ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronDown, Search, Clock, Zap, MapPin, LinkIcon, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -24,7 +24,16 @@ const TIME_PRESETS = [
 type SectionKey = "search" | "time" | "topics" | "entities" | "locations" | "sources"
 
 export default function FiltersSidebar() {
-  const { filters, updateFilter, resetFilters, filterCounts, availableCategories, availablePrimaryTopics, groupedPrimaryTopics } = useNews()
+  const {
+    filters,
+    updateFilter,
+    resetFilters,
+    filterCounts,
+    availableCategories,
+    availablePrimaryTopics,
+    groupedPrimaryTopics,
+    availableSources,
+  } = useNews()
   
   // Debounced search input
   const [searchInput, setSearchInput] = useState(filters.search)
@@ -42,8 +51,8 @@ export default function FiltersSidebar() {
   
   // Hydration guard: render dynamic counts only after mount
   const [hydrated, setHydrated] = useState(false)
-  const [chatMessage, setChatMessage] = useState("")
   useEffect(() => setHydrated(true), [])
+  const [collapsed, setCollapsed] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Record<SectionKey, boolean>>({
     search: true,
     time: false,
@@ -77,14 +86,6 @@ export default function FiltersSidebar() {
     }))
   }
 
-  const handleSendMessage = () => {
-    if (chatMessage.trim()) {
-      // TODO: Implement chat functionality
-      console.log("Chat message:", chatMessage)
-      setChatMessage("")
-    }
-  }
-
   const allPeople = useMemo(() => Object.keys(filterCounts.people).sort((a, b) => a.localeCompare(b)), [filterCounts])
   const allCompanies = useMemo(
     () => Object.keys(filterCounts.companies).sort((a, b) => a.localeCompare(b)),
@@ -94,29 +95,47 @@ export default function FiltersSidebar() {
     () => Object.keys(filterCounts.locations).sort((a, b) => a.localeCompare(b)),
     [filterCounts],
   )
-  const allDomains = useMemo(
-    () => Object.keys(filterCounts.domains).sort((a, b) => a.localeCompare(b)),
-    [filterCounts],
-  )
-  const allStockSymbols = useMemo(
-    () => Object.keys(filterCounts.stockSymbols).sort((a, b) => a.localeCompare(b)),
-    [filterCounts],
-  )
+  if (collapsed) {
+    return (
+      <aside className="hidden md:flex flex-col w-10 border-r border-border bg-card items-center py-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={() => setCollapsed(false)}
+          aria-label="Show filters sidebar"
+        >
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </aside>
+    )
+  }
 
   return (
     <aside className="hidden md:flex flex-col w-64 md:w-72 lg:w-80 border-r border-border bg-card overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 md:px-4 py-3 md:py-4 border-b border-border">
-        <h2 className="font-semibold text-foreground text-sm md:text-base">Filters</h2>
-        <Button 
-              variant="outline" 
-              size="sm" 
-              className="text-xs h-7 md:h-8 px-2 md:px-3 shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive" 
-              onClick={resetFilters}
-            >
-              Clear All
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setCollapsed(true)}
+            aria-label="Hide filters sidebar"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <h2 className="font-semibold text-foreground text-sm md:text-base">Filters</h2>
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-xs h-7 md:h-8 px-2 md:px-3 shrink-0 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
+          onClick={resetFilters}
+        >
+          Clear All
+        </Button>
+      </div>
 
       {/* Scrollable Filter Area */}
       {/* Scrollable Filter Area */}
@@ -482,12 +501,12 @@ export default function FiltersSidebar() {
                   ))}
                 </div>
               )}
-              {/* Source selector */}
+              {/* Source selector (always show full domain list from all articles) */}
               <div className="space-y-0.5 md:space-y-1 max-h-48 md:max-h-60 overflow-y-auto">
                 {!hydrated ? (
                   <p className="text-xs text-muted-foreground">Loading...</p>
                 ) : (
-                  allDomains.map((domain) => (
+                  availableSources.map((domain) => (
                     <label key={domain} className="flex items-center gap-2 cursor-pointer text-xs hover:bg-muted/30 p-1.5 md:p-2 rounded touch-manipulation min-w-0">
                     <Checkbox
                       checked={filters.sources.includes(domain)}

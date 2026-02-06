@@ -135,12 +135,24 @@ export default function NewsFeed() {
               variant="outline" 
               size="sm"
               onClick={() => {
-                const nextSort = sortOrder === 'newest' ? 'oldest' : sortOrder === 'oldest' ? 'relevant' : 'newest'
+                const nextSort =
+                  sortOrder === "newest"
+                    ? "oldest"
+                    : sortOrder === "oldest"
+                    ? "relevant"
+                    : "newest"
                 setSortOrder(nextSort)
               }}
-              className="tap-target"
+              className="tap-target flex items-center gap-1"
             >
               <ArrowUpDown className="w-4 h-4" />
+              <span className="text-xs capitalize">
+                {sortOrder === "newest"
+                  ? "Newest"
+                  : sortOrder === "oldest"
+                  ? "Oldest"
+                  : "Relevant"}
+              </span>
             </Button>
           </div>
         </div>

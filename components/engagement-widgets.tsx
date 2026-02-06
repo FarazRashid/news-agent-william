@@ -39,12 +39,23 @@ export default function EngagementWidgets() {
 
 
   const trendingPublishers = useMemo(() => {
-    return Object.entries(filterCounts.sources)
-      .map(([name, count]) => ({
-        name,
-        count,
-        percentage: ((count / filteredArticles.length) * 100).toFixed(1),
-      }))
+    if (!filteredArticles.length) return []
+
+    return Object.entries(filterCounts.domains)
+      .map(([domain, count]) => {
+        const prettyName =
+          domain
+            .replace(/^www\./, "")
+            .split(".")[0]
+            .replace(/^\w/, (c) => c.toUpperCase()) || domain || "Unknown"
+
+        return {
+          domain,
+          name: prettyName,
+          count,
+          percentage: ((count / filteredArticles.length) * 100).toFixed(1),
+        }
+      })
       .sort((a, b) => b.count - a.count)
       .slice(0, 6)
   }, [filterCounts, filteredArticles])
@@ -75,6 +86,7 @@ export default function EngagementWidgets() {
             size="icon"
             onClick={toggleRightSidebar}
             className="h-10 w-10"
+            aria-label="Open insights sidebar"
           >
             <ChevronLeft className="h-5 w-5" />
           </Button>
@@ -82,12 +94,8 @@ export default function EngagementWidgets() {
       )}
 
       {/* Expanded state - full sidebar */}
-     
-    </>
-  )
-  {
-    !isRightCollapsed && (
-      <aside className="hidden xl:flex flex-col w-80 border-l border-border bg-card overflow-hidden">
+      {!isRightCollapsed && (
+        <aside className="hidden xl:flex flex-col w-80 border-l border-border bg-card overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-4 border-b border-border">
           <h2 className="font-semibold text-foreground text-base">Insights</h2>
@@ -108,16 +116,17 @@ export default function EngagementWidgets() {
             <h3 className="font-semibold text-foreground mb-4 text-sm">Related Topics</h3>
             <div className="space-y-2">
               {relatedTopics.map(([topic, count]) => (
-                <div
+                <button
                   key={topic}
+                  type="button"
                   onClick={() => {
                     // Add topic filter logic if needed
                   }}
-                  className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
+                  className="flex w-full items-center justify-between text-left text-sm hover:bg-muted p-2 rounded transition-colors"
                 >
                   <span className="text-foreground">{topic}</span>
                   <span className="text-muted-foreground font-medium">{count}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -127,21 +136,27 @@ export default function EngagementWidgets() {
             <h3 className="font-semibold text-foreground mb-4 text-sm">Trending Publishers</h3>
             <div className="space-y-2">
               {trendingPublishers.map((publisher) => (
-                <div
-                  key={publisher.name}
+                <button
+                  key={publisher.domain}
+                  type="button"
                   onClick={() => {
-                    updateFilter("sources", [publisher.name])
+                    const next = filters.sources.includes(publisher.domain)
+                      ? filters.sources
+                      : [...filters.sources, publisher.domain]
+                    updateFilter("sources", next)
                   }}
-                  className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
+                  className="flex w-full items-center justify-between text-left text-sm hover:bg-muted p-2 rounded transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                      {publisher.name.charAt(0)}
+                      {publisher.domain.charAt(0).toUpperCase()}
                     </div>
-                    <span className="text-foreground">{publisher.name}</span>
+                    <span className="text-foreground truncate max-w-[140px]">
+                      {publisher.name}
+                    </span>
                   </div>
                   <span className="font-medium text-sm text-success">{publisher.percentage}%</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -151,12 +166,16 @@ export default function EngagementWidgets() {
             <h3 className="font-semibold text-foreground mb-4 text-sm">Trending Sources</h3>
             <div className="space-y-2">
               {trendingSources.map((source) => (
-                <div
+                <button
                   key={source.domain}
+                  type="button"
                   onClick={() => {
-                    updateFilter("sources", [...filters.sources, source.domain])
+                    const next = filters.sources.includes(source.domain)
+                      ? filters.sources
+                      : [...filters.sources, source.domain]
+                    updateFilter("sources", next)
                   }}
-                  className="flex items-center justify-between text-sm hover:bg-muted p-2 rounded cursor-pointer transition-colors"
+                  className="flex w-full items-center justify-between text-left text-sm hover:bg-muted p-2 rounded transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
@@ -168,11 +187,13 @@ export default function EngagementWidgets() {
                     {source.change > 0 ? "+" : ""}
                     {source.change}
                   </span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
         </div>
       </aside>
-    )
-  }  }
+      )}
+    </>
+  )
+}
