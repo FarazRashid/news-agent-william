@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { TrendingUp, TrendingDown, Plus, Trash2, Star } from "lucide-react"
+import { TrendingUp, TrendingDown, Plus, Trash2, Star, ArrowLeft } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,8 +18,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  getWatchlist,
+  addSymbolToWatchlist,
+  removeSymbolFromWatchlist,
+} from "@/lib/stocks/watchlist"
 
-type WatchlistStock = {
+type WatchlistItem = {
   symbol: string
   addedAt: Date
 }
@@ -36,69 +41,98 @@ const getStockInfo = (symbol: string) => {
     META: { name: "Meta Platforms Inc.", price: 489.12, change: 1.98 },
     NFLX: { name: "Netflix Inc.", price: 594.38, change: -0.54 },
   }
-  
+
   return mockData[symbol] || { name: symbol, price: 0, change: 0 }
 }
 
+const loadWatchlistFromSession = (): WatchlistItem[] => {
+  return getWatchlist().map((item) => ({
+    symbol: item.symbol,
+    addedAt: new Date(item.addedAt),
+  }))
+}
+
 export default function StockWatchlist() {
-  const [watchlist, setWatchlist] = useState<WatchlistStock[]>([])
+  const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [newSymbol, setNewSymbol] = useState("")
   const [isAdding, setIsAdding] = useState(false)
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
 
-  // Load watchlist from localStorage
+  // Load watchlist from session storage on mount
   useEffect(() => {
-    const saved = localStorage.getItem("stock-watchlist")
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setWatchlist(parsed.map((item: any) => ({
-          ...item,
-          addedAt: new Date(item.addedAt),
-        })))
-      } catch (e) {
-        console.error("Failed to load watchlist")
-      }
-    }
+    setWatchlist(loadWatchlistFromSession())
   }, [])
 
-  // Save watchlist to localStorage
-  const saveWatchlist = (newWatchlist: WatchlistStock[]) => {
-    setWatchlist(newWatchlist)
-    localStorage.setItem("stock-watchlist", JSON.stringify(newWatchlist))
+  const refreshWatchlist = () => {
+    setWatchlist(loadWatchlistFromSession())
   }
 
   const addStock = (e: React.FormEvent) => {
     e.preventDefault()
     const symbol = newSymbol.trim().toUpperCase()
-    if (symbol && !watchlist.find((s) => s.symbol === symbol)) {
-      saveWatchlist([...watchlist, { symbol, addedAt: new Date() }])
-      setNewSymbol("")
-      setIsAdding(false)
-    }
+    if (!symbol) return
+
+    addSymbolToWatchlist(symbol)
+    refreshWatchlist()
+    setNewSymbol("")
+    setIsAdding(false)
   }
 
   const removeStock = (symbol: string) => {
-    saveWatchlist(watchlist.filter((s) => s.symbol !== symbol))
+    removeSymbolFromWatchlist(symbol)
+    refreshWatchlist()
   }
 
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto padding-responsive py-6 fold:py-8">
+        {/* Back Navigation */}
+        <div className="mb-4">
+          <Link href="/">
+            <Button variant="ghost" size="sm" className="gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="hidden fold:inline">Back to Home</span>
+            </Button>
+          </Link>
+        </div>
+
         {/* Header */}
         <div className="mb-6 fold:mb-8">
-          <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center justify-between mb-2 gap-4">
             <div className="flex items-center gap-3">
               <Star className="h-6 w-6 fold:h-8 fold:w-8 text-primary" />
               <h1 className="text-2xl fold:text-3xl ipad:text-4xl font-bold">My Watchlist</h1>
             </div>
-            <Button
-              onClick={() => setIsAdding(!isAdding)}
-              size="sm"
-              className="gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden fold:inline">Add Stock</span>
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="flex rounded-md border border-border p-0.5">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={viewMode === "grid" ? "default" : "ghost"}
+                  className="px-3 text-xs"
+                  onClick={() => setViewMode("grid")}
+                >
+                  Grid
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={viewMode === "list" ? "default" : "ghost"}
+                  className="px-3 text-xs"
+                  onClick={() => setViewMode("list")}
+                >
+                  List
+                </Button>
+              </div>
+              <Button
+                onClick={() => setIsAdding(!isAdding)}
+                size="sm"
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden fold:inline">Add Stock</span>
+              </Button>
+            </div>
           </div>
           <p className="text-muted-foreground">
             Track your favorite stocks and monitor their performance
@@ -147,7 +181,7 @@ export default function StockWatchlist() {
               Add Your First Stock
             </Button>
           </Card>
-        ) : (
+        ) : viewMode === "grid" ? (
           <div className="grid grid-cols-1 fold:grid-cols-2 ipad:grid-cols-2 trifold:grid-cols-3 gap-4">
             {watchlist.map(({ symbol }) => {
               const info = getStockInfo(symbol)
@@ -216,6 +250,98 @@ export default function StockWatchlist() {
                       View Details
                     </Button>
                   </Link>
+                </Card>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {watchlist.map(({ symbol }) => {
+              const info = getStockInfo(symbol)
+              const isPositive = info.change >= 0
+
+              return (
+                <Card key={symbol} className="p-3 fold:p-4 hover:shadow-md transition-all">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                      <Link href={`/stocks/${symbol}`} className="min-w-0">
+                        <div className="flex items-baseline gap-2">
+                          <h3 className="font-semibold text-base fold:text-lg hover:text-primary transition-colors">
+                            {symbol}
+                          </h3>
+                        </div>
+                        <p className="text-xs fold:text-sm text-muted-foreground truncate">
+                          {info.name}
+                        </p>
+                      </Link>
+                      <div className="hidden fold:flex flex-col items-start gap-1">
+                        <span className="text-base fold:text-lg font-semibold">
+                          ${info.price.toFixed(2)}
+                        </span>
+                        <Badge
+                          variant={isPositive ? "default" : "destructive"}
+                          className="gap-1"
+                        >
+                          {isPositive ? (
+                            <TrendingUp className="h-3 w-3" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3" />
+                          )}
+                          {isPositive ? "+" : ""}
+                          {info.change.toFixed(2)}%
+                        </Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-end gap-1 fold:hidden">
+                        <span className="text-sm font-semibold">
+                          ${info.price.toFixed(2)}
+                        </span>
+                        <Badge
+                          variant={isPositive ? "default" : "destructive"}
+                          className="gap-1"
+                        >
+                          {isPositive ? (
+                            <TrendingUp className="h-3 w-3" />
+                          ) : (
+                            <TrendingDown className="h-3 w-3" />
+                          )}
+                          {isPositive ? "+" : ""}
+                          {info.change.toFixed(2)}%
+                        </Badge>
+                      </div>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                          >
+                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Remove from watchlist?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This will remove {symbol} from your watchlist.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => removeStock(symbol)}>
+                              Remove
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      <Link href={`/stocks/${symbol}`}>
+                        <Button variant="outline" size="sm">
+                          View
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
                 </Card>
               )
             })}

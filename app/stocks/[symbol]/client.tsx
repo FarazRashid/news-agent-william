@@ -14,6 +14,10 @@ import { StockOwnership } from "@/components/stocks/stock-ownership";
 import { StockPageSkeleton } from "@/components/stocks/stock-page-skeleton";
 import { fetchStockData, fetchStockSummary } from "@/lib/stocks/api";
 import { generateStockMetrics } from "@/lib/stocks/utils";
+import {
+  isSymbolWatchlisted,
+  toggleSymbolInWatchlist,
+} from "@/lib/stocks/watchlist";
 import type { StockData, StockSummary } from "@/lib/stocks/types";
 
 interface StockPageClientProps {
@@ -51,6 +55,11 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
     };
 
     loadStockData();
+  }, [symbol]);
+
+  useEffect(() => {
+    // Sync local state with session-based watchlist when the symbol changes
+    setIsWatchlisted(isSymbolWatchlisted(symbol));
   }, [symbol]);
 
   useEffect(() => {
@@ -106,12 +115,8 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
   }, [symbol, stockData, summary?.lastUpdated?.getTime()]);
 
   const handleToggleWatchlist = () => {
-    setIsWatchlisted(!isWatchlisted);
-    // TODO: Implement actual watchlist functionality with database
-    console.log(
-      `${isWatchlisted ? "Removed from" : "Added to"} watchlist:`,
-      symbol,
-    );
+    const { isWatchlisted: next } = toggleSymbolInWatchlist(symbol);
+    setIsWatchlisted(next);
   };
 
   const handleShare = () => {
