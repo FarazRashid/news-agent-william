@@ -13,11 +13,17 @@ interface StockChartProps {
   symbol: string
   currentPrice?: number
   defaultTimeRange?: TimeRange
+  onHoverPoint?: (point: { timestamp: number; price: number } | null) => void
 }
 
 const TIME_RANGES: TimeRange[] = ["1D", "5D", "1M", "3M", "6M", "1Y", "5Y"]
 
-export function StockChart({ symbol, currentPrice, defaultTimeRange = "1D" }: StockChartProps) {
+export function StockChart({
+  symbol,
+  currentPrice,
+  defaultTimeRange = "1D",
+  onHoverPoint,
+}: StockChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>(defaultTimeRange)
   const [chartData, setChartData] = useState<StockPrice[]>([])
   const [loading, setLoading] = useState(true)
@@ -114,10 +120,15 @@ export function StockChart({ symbol, currentPrice, defaultTimeRange = "1D" }: St
                 data={chartData}
                 onMouseMove={(e: any) => {
                   if (e && e.activePayload && e.activePayload[0]) {
-                    setHoveredPrice(e.activePayload[0].payload.close)
+                    const payload = e.activePayload[0].payload as StockPrice
+                    setHoveredPrice(payload.close)
+                    onHoverPoint?.({ timestamp: payload.timestamp, price: payload.close })
                   }
                 }}
-                onMouseLeave={() => setHoveredPrice(null)}
+                onMouseLeave={() => {
+                  setHoveredPrice(null)
+                  onHoverPoint?.(null)
+                }}
               >
                 <defs>
                   <linearGradient id="colorPrice" x1="0" y1="0" x2="0" y2="1">
@@ -214,6 +225,9 @@ export function StockChart({ symbol, currentPrice, defaultTimeRange = "1D" }: St
           <li>Hover over the chart to see detailed price information</li>
           <li>Click time range buttons to view different periods</li>
           <li className="hidden ipad:list-item">Area color indicates overall trend direction</li>
+          <li className="hidden ipad:list-item">
+            Hovering also syncs with the news carousel below, so you can see headlines for that day.
+          </li>
         </ul>
       </div>
     </Card>
