@@ -8,7 +8,6 @@ import {
   Plus,
   Trash2,
   Star,
-  ArrowLeft,
   Columns3,
   CheckSquare,
   Square,
@@ -17,6 +16,7 @@ import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import Header from "@/components/header"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,6 +36,7 @@ import {
 import { fetchStockData } from "@/lib/stocks/api"
 import type { StockData } from "@/lib/stocks/types"
 import { StockComparisonTable } from "@/components/stocks/stock-comparison-table"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 type SymbolSuggestion = {
   symbol: string
@@ -45,6 +46,14 @@ type SymbolSuggestion = {
 type WatchlistItem = {
   symbol: string
   addedAt: Date
+}
+
+type WatchlistStockData = {
+  symbol: string
+  name: string
+  price: number
+  change: number
+  logoUrl?: string
 }
 
 const POPULAR_SYMBOLS: SymbolSuggestion[] = [
@@ -59,16 +68,56 @@ const POPULAR_SYMBOLS: SymbolSuggestion[] = [
 ]
 
 // Mock function to get basic stock info - in production, use real API
-const getStockInfo = (symbol: string) => {
-  const mockData: Record<string, { name: string; price: number; change: number }> = {
-    AAPL: { name: "Apple Inc.", price: 178.32, change: 2.45 },
-    MSFT: { name: "Microsoft Corporation", price: 412.76, change: -1.23 },
-    GOOGL: { name: "Alphabet Inc.", price: 142.89, change: 0.87 },
-    AMZN: { name: "Amazon.com Inc.", price: 168.54, change: 3.21 },
-    TSLA: { name: "Tesla Inc.", price: 248.92, change: -2.67 },
-    NVDA: { name: "NVIDIA Corporation", price: 485.23, change: 5.43 },
-    META: { name: "Meta Platforms Inc.", price: 489.12, change: 1.98 },
-    NFLX: { name: "Netflix Inc.", price: 594.38, change: -0.54 },
+const getStockInfo = (symbol: string): { name: string; price: number; change: number; logoUrl?: string } => {
+  const mockData: Record<string, { name: string; price: number; change: number; logoUrl?: string }> = {
+    AAPL: { 
+      name: "Apple Inc.", 
+      price: 178.32, 
+      change: 2.45,
+      logoUrl: "https://logo.clearbit.com/apple.com"
+    },
+    MSFT: { 
+      name: "Microsoft Corporation", 
+      price: 412.76, 
+      change: -1.23,
+      logoUrl: "https://logo.clearbit.com/microsoft.com"
+    },
+    GOOGL: { 
+      name: "Alphabet Inc.", 
+      price: 142.89, 
+      change: 0.87,
+      logoUrl: "https://logo.clearbit.com/google.com"
+    },
+    AMZN: { 
+      name: "Amazon.com Inc.", 
+      price: 168.54, 
+      change: 3.21,
+      logoUrl: "https://logo.clearbit.com/amazon.com"
+    },
+    TSLA: { 
+      name: "Tesla Inc.", 
+      price: 248.92, 
+      change: -2.67,
+      logoUrl: "https://logo.clearbit.com/tesla.com"
+    },
+    NVDA: { 
+      name: "NVIDIA Corporation", 
+      price: 485.23, 
+      change: 5.43,
+      logoUrl: "https://logo.clearbit.com/nvidia.com"
+    },
+    META: { 
+      name: "Meta Platforms Inc.", 
+      price: 489.12, 
+      change: 1.98,
+      logoUrl: "https://logo.clearbit.com/meta.com"
+    },
+    NFLX: { 
+      name: "Netflix Inc.", 
+      price: 594.38, 
+      change: -0.54,
+      logoUrl: "https://logo.clearbit.com/netflix.com"
+    },
   }
 
   return mockData[symbol] || { name: symbol, price: 0, change: 0 }
@@ -212,17 +261,8 @@ export default function StockWatchlist() {
 
   return (
     <div className="min-h-screen bg-background">
+      <Header />
       <div className="container mx-auto padding-responsive py-6 fold:py-8">
-        {/* Back Navigation */}
-        <div className="mb-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="h-4 w-4" />
-              <span className="hidden fold:inline">Back to Home</span>
-            </Button>
-          </Link>
-        </div>
-
         {/* Header */}
         <div className="mb-6 fold:mb-8">
           <div className="flex items-center justify-between mb-2 gap-4">
@@ -343,14 +383,25 @@ export default function StockWatchlist() {
 
               return (
                 <Card key={symbol} className="p-4 fold:p-6 hover:shadow-lg transition-all">
-                  <div className="flex items-start justify-between mb-4">
-                    <Link href={`/stocks/${symbol}`} className="flex-1 min-w-0">
-                      <h3 className="font-bold text-lg fold:text-xl hover:text-primary transition-colors">
-                        {symbol}
-                      </h3>
-                      <p className="text-sm text-muted-foreground truncate">
-                        {info.name}
-                      </p>
+                  <div className="flex items-start justify-between mb-4 gap-3">
+                    <Link href={`/stocks/${symbol}`} className="flex items-start gap-3 flex-1 min-w-0">
+                      <Avatar className="h-10 w-10 shrink-0">
+                        <AvatarImage
+                          src={info.logoUrl}
+                          alt={`${info.name} logo`}
+                        />
+                        <AvatarFallback className="text-xs font-semibold">
+                          {symbol.substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-lg fold:text-xl hover:text-primary transition-colors">
+                          {symbol}
+                        </h3>
+                        <p className="text-sm text-muted-foreground truncate">
+                          {info.name}
+                        </p>
+                      </div>
                     </Link>
                     <Button
                       variant={isSelected ? "default" : "outline"}
@@ -427,7 +478,16 @@ export default function StockWatchlist() {
               return (
                 <Card key={symbol} className="p-3 fold:p-4 hover:shadow-md transition-all">
                   <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 flex-1 min-w-0">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar className="h-10 w-10 shrink-0">
+                        <AvatarImage
+                          src={info.logoUrl}
+                          alt={`${info.name} logo`}
+                        />
+                        <AvatarFallback className="text-xs font-semibold">
+                          {symbol.substring(0, 2)}
+                        </AvatarFallback>
+                      </Avatar>
                       <Link href={`/stocks/${symbol}`} className="min-w-0">
                         <div className="flex items-baseline gap-2">
                           <h3 className="font-semibold text-base fold:text-lg hover:text-primary transition-colors">

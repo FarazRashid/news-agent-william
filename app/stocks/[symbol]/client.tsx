@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Header from "@/components/header";
 import { StockHeader } from "@/components/stocks/stock-header";
 import { StockChart } from "@/components/stocks/stock-chart";
 import { StockFinancialMetrics } from "@/components/stocks/stock-financial-metrics";
@@ -259,21 +260,24 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
 
   if (error || !stockData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <h1 className="text-2xl font-bold mb-4">
-            {error ? "Error Loading Stock" : "Stock Not Found"}
-          </h1>
-          <p className="text-muted-foreground mb-6">
-            {error ||
-              `Unable to find stock data for symbol: ${symbol.toUpperCase()}`}
-          </p>
-          <Link href="/">
-            <Button>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center px-4 py-10">
+          <div className="text-center max-w-md mx-auto p-6">
+            <h1 className="text-2xl font-bold mb-4">
+              {error ? "Error Loading Stock" : "Stock Not Found"}
+            </h1>
+            <p className="text-muted-foreground mb-6">
+              {error ||
+                `Unable to find stock data for symbol: ${symbol.toUpperCase()}`}
+            </p>
+            <Link href="/">
+              <Button>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -286,17 +290,7 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <div className="border-b border-border">
-        <div className="container mx-auto padding-responsive py-3 sm:py-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to Home</span>
-            </Button>
-          </Link>
-        </div>
-      </div>
+      <Header />
 
       {/* Main Content */}
       <div className="container mx-auto padding-responsive py-6 sm:py-8 md:py-10">
