@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
+import Header from "@/components/header"
 
 type IndexData = {
   symbol: string
@@ -155,6 +156,7 @@ export default function MarketOverview() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
+        <Header />
         <div className="container mx-auto padding-responsive py-6 fold:py-8">
           <div className="flex items-center gap-3 mb-6">
             <Activity className="h-6 w-6 fold:h-8 fold:w-8 text-primary animate-pulse" />
@@ -168,6 +170,7 @@ export default function MarketOverview() {
   if (error) {
     return (
       <div className="min-h-screen bg-background">
+        <Header />
         <div className="container mx-auto padding-responsive py-6 fold:py-8">
           <div className="flex items-center gap-3 mb-6">
             <Activity className="h-6 w-6 fold:h-8 fold:w-8 text-primary" />
@@ -180,8 +183,9 @@ export default function MarketOverview() {
       </div>
     )
   }
-        return (
+  return (
     <div className="min-h-screen bg-background">
+      <Header />
       <div className="container mx-auto padding-responsive py-6 fold:py-8">
         {/* Header */}
         <div className="mb-6 fold:mb-8">

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Header from "@/components/header";
 import { StockHeader } from "@/components/stocks/stock-header";
 import { StockChart } from "@/components/stocks/stock-chart";
 import { StockFinancialMetrics } from "@/components/stocks/stock-financial-metrics";
@@ -259,21 +260,24 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
 
   if (error || !stockData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center max-w-md mx-auto p-6">
-          <h1 className="text-2xl font-bold mb-4">
-            {error ? "Error Loading Stock" : "Stock Not Found"}
-          </h1>
-          <p className="text-muted-foreground mb-6">
-            {error ||
-              `Unable to find stock data for symbol: ${symbol.toUpperCase()}`}
-          </p>
-          <Link href="/">
-            <Button>
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Home
-            </Button>
-          </Link>
+      <div className="min-h-screen bg-background">
+        <Header />
+        <div className="flex items-center justify-center px-4 py-10">
+          <div className="text-center max-w-md mx-auto p-6">
+            <h1 className="text-2xl font-bold mb-4">
+              {error ? "Error Loading Stock" : "Stock Not Found"}
+            </h1>
+            <p className="text-muted-foreground mb-6">
+              {error ||
+                `Unable to find stock data for symbol: ${symbol.toUpperCase()}`}
+            </p>
+            <Link href="/">
+              <Button>
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Home
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     );
@@ -286,17 +290,7 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <div className="border-b border-border">
-        <div className="container mx-auto padding-responsive py-3 sm:py-4">
-          <Link href="/">
-            <Button variant="ghost" size="sm" className="gap-2">
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">Back to Home</span>
-            </Button>
-          </Link>
-        </div>
-      </div>
+      <Header />
 
       {/* Main Content */}
       <div className="container mx-auto padding-responsive py-6 sm:py-8 md:py-10">
@@ -315,94 +309,6 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
           onSetAlert={handleSetAlert}
         />
 
-        {/* Inline Compare Tool */}
-        <div className="mt-4 sm:mt-6 mb-6 sm:mb-8" ref={compareSectionRef}>
-          <div className="bg-card border border-border rounded-lg p-4 sm:p-5 md:p-6 space-y-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <h2 className="text-base sm:text-lg font-semibold">
-                  Compare with another stock
-                </h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">
-                  Quickly line up {stockData.symbol} against a peer to compare price
-                  action, valuation, and profile.
-                </p>
-              </div>
-              <form
-                onSubmit={handleLoadComparison}
-                className="flex w-full sm:w-auto flex-col sm:flex-row gap-2"
-              >
-                <div className="relative w-full sm:w-56">
-                  <input
-                    type="text"
-                    placeholder="Enter symbol (e.g. MSFT)"
-                    value={compareSymbol}
-                    onChange={(e) => handleCompareSymbolChange(e.target.value)}
-                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                  />
-                  {compareSymbol.trim() &&
-                    filteredSymbolSuggestions.length > 0 && (
-                      <div className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-popover text-xs sm:text-sm shadow-lg">
-                        {filteredSymbolSuggestions.map((sugg) => (
-                          <button
-                            key={sugg.symbol}
-                            type="button"
-                            className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
-                            onClick={() => {
-                              setCompareSymbol(sugg.symbol);
-                              setFilteredSymbolSuggestions([]);
-                              setCompareError(null);
-                            }}
-                          >
-                            <div className="min-w-0">
-                              <span className="font-semibold">
-                                {sugg.symbol}
-                              </span>
-                              {sugg.name && (
-                                <span className="ml-2 text-muted-foreground truncate">
-                                  {sugg.name}
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                </div>
-                <Button
-                  type="submit"
-                  size="sm"
-                  disabled={compareLoading || !compareSymbol.trim()}
-                  className="whitespace-nowrap"
-                >
-                  {compareLoading ? "Loading..." : "Compare"}
-                </Button>
-              </form>
-            </div>
-            {compareStock && !compareError && !compareLoading && (
-              <p className="text-xs sm:text-sm text-muted-foreground">
-                Comparing{" "}
-                <span className="font-semibold">{stockData.symbol}</span> with{" "}
-                <span className="font-semibold">
-                  {compareStock.symbol}
-                </span>{" "}
-                below.
-              </p>
-            )}
-            {compareError && (
-              <p className="text-xs sm:text-sm text-destructive">{compareError}</p>
-            )}
-          </div>
-
-          {compareStock && (
-            <StockComparisonTable
-              stocks={[stockData, compareStock]}
-              highlightSymbol={stockData.symbol}
-              title="Side‑by‑side comparison"
-            />
-          )}
-        </div>
-
         {/* Two-Column Layout: Chart + Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
           {/* Left Column: Chart & About (2/3 width on larger screens) */}
@@ -410,7 +316,6 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
             <div
               ref={chartSectionRef}
               id="stock-price-chart"
-              className="space-y-4 sm:space-y-5"
             >
               <StockChart
                 symbol={stockData.symbol}
@@ -418,20 +323,98 @@ export function StockPageClient({ symbol }: StockPageClientProps) {
                 onHoverPoint={(point) =>
                   setHoveredNewsTimestamp(point?.timestamp ?? null)
                 }
-              />
+                contentBelowChart={
+                  <>
+                    {/* Compare: inside chart card, above news */}
+                    <div ref={compareSectionRef} className="space-y-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                        <span className="text-sm font-medium shrink-0">
+                          Compare with
+                        </span>
+                        <form
+                          onSubmit={handleLoadComparison}
+                          className="flex flex-row gap-2 flex-1 min-w-0"
+                        >
+                          <div className="relative flex-1 min-w-0 max-w-[200px] sm:max-w-[180px]">
+                            <input
+                              type="text"
+                              placeholder="e.g. MSFT"
+                              value={compareSymbol}
+                              onChange={(e) =>
+                                handleCompareSymbolChange(e.target.value)
+                              }
+                              className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                            />
+                            {compareSymbol.trim() &&
+                              filteredSymbolSuggestions.length > 0 && (
+                                <div className="absolute left-0 right-0 z-30 mt-1 max-h-56 overflow-y-auto rounded-md border border-border bg-popover text-xs sm:text-sm shadow-lg">
+                                  {filteredSymbolSuggestions.map((sugg) => (
+                                    <button
+                                      key={sugg.symbol}
+                                      type="button"
+                                      className="flex w-full items-center justify-between px-3 py-2 text-left hover:bg-accent hover:text-accent-foreground"
+                                      onClick={() => {
+                                        setCompareSymbol(sugg.symbol);
+                                        setFilteredSymbolSuggestions([]);
+                                        setCompareError(null);
+                                      }}
+                                    >
+                                      <span className="font-semibold">
+                                        {sugg.symbol}
+                                      </span>
+                                      {sugg.name && (
+                                        <span className="ml-2 text-muted-foreground truncate text-xs">
+                                          {sugg.name}
+                                        </span>
+                                      )}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                          </div>
+                          <Button
+                            type="submit"
+                            size="sm"
+                            disabled={compareLoading || !compareSymbol.trim()}
+                            className="whitespace-nowrap shrink-0"
+                          >
+                            {compareLoading ? "Loading..." : "Compare"}
+                          </Button>
+                        </form>
+                        {compareError && (
+                          <p className="text-xs text-destructive shrink-0">
+                            {compareError}
+                          </p>
+                        )}
+                      </div>
 
-              {/* Linked News Carousel */}
-              <div className="mt-2 pb-6">
-                <div className="flex items-center justify-between mb-2 sm:mb-3">
-                  <h2 className="text-base sm:text-lg font-semibold">News</h2>
-                </div>
-                <StockNewsFeed
-                  symbol={stockData.symbol}
-                  companyName={stockData.name}
-                  limit={10}
-                  hoveredTimestamp={hoveredNewsTimestamp}
-                />
-              </div>
+                      {compareStock && !compareError && (
+                        <StockComparisonTable
+                          stocks={[stockData, compareStock]}
+                          highlightSymbol={stockData.symbol}
+                          title="Side‑by‑side comparison"
+                          layout="horizontal"
+                        />
+                      )}
+                    </div>
+
+                    {/* News: inside chart card, below compare */}
+                    <div className="mt-4 pt-4 border-t border-border">
+                      <div className="flex items-center justify-between mb-2 sm:mb-3">
+                        <h2 className="text-base sm:text-lg font-semibold">
+                          News
+                        </h2>
+                      </div>
+                      <StockNewsFeed
+                        symbol={stockData.symbol}
+                        companyName={stockData.name}
+                        limit={10}
+                        hoveredTimestamp={hoveredNewsTimestamp}
+                      />
+                    </div>
+                  </>
+                }
+              />
             </div>
 
             {/* Financial Metrics & Charts */}

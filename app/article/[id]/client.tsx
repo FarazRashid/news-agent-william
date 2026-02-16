@@ -26,6 +26,7 @@ import {
 } from "@/components/article-sidebar-widgets"
 import { ContinueExploring } from "@/components/continue-exploring"
 import { ArticlePageSkeleton } from "@/components/article-page-skeleton"
+import Header from "@/components/header"
 
 export default function ArticleClient({ id }: { id: string }) {
   const [article, setArticle] = useState<Article | null>(null)
@@ -149,7 +150,8 @@ export default function ArticleClient({ id }: { id: string }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Persistent Navigation */}
+      <Header />
+      {/* Article navigation (back, share, etc.) */}
       <ArticleNavigation trendingTags={trendingTags} />
 
       {/* Article Header - Full Width */}
