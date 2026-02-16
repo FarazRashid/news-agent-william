@@ -22,6 +22,8 @@ interface StockComparisonTableProps {
   stocks: StockData[]
   title?: string
   highlightSymbol?: string
+  /** "horizontal" = metrics as columns, stocks as rows (flows right, less vertical space) */
+  layout?: "vertical" | "horizontal"
 }
 
 function StockLogoAvatar({ stock }: { stock: StockData }) {
@@ -110,6 +112,7 @@ export function StockComparisonTable({
   stocks,
   title = "Stock Comparison",
   highlightSymbol,
+  layout = "vertical",
 }: Readonly<StockComparisonTableProps>) {
   if (!stocks.length) return null
 
@@ -234,6 +237,90 @@ export function StockComparisonTable({
         [s.sector, s.industry].filter(Boolean).join(" · ") || "—",
     },
   ]
+
+  if (layout === "horizontal") {
+    return (
+      <Card className="mt-4 border-border/70 bg-background shadow-xl">
+        <div className="px-3 py-2 sm:px-4 sm:py-3 border-b border-border/60 flex items-center justify-between gap-2">
+          <h2 className="text-sm sm:text-base font-bold tracking-tight truncate">
+            {title}
+          </h2>
+          <Badge variant="outline" className="text-xs shrink-0">
+            {stocks.length} stocks
+          </Badge>
+        </div>
+        <div className="w-full overflow-x-auto overflow-y-hidden">
+          <div
+            className="min-w-max grid w-max"
+            style={{
+              gridTemplateColumns: `140px repeat(${metricRows.length}, 140px)`,
+            }}
+          >
+            {/* Header row: Stock | Metric1 | Metric2 | ... */}
+            <div className="px-3 py-2 sm:px-4 sm:py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-r border-b border-border bg-muted/40">
+              Stock
+            </div>
+            {metricRows.map((row) => {
+              const Icon = row.icon
+              return (
+                <div
+                  key={`h-${row.key}`}
+                  className="px-3 py-2 sm:px-4 sm:py-2.5 border-r border-b border-border last:border-r-0 flex items-center gap-2 bg-muted/40"
+                >
+                  <div
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded",
+                      row.accentClass,
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                  </div>
+                  <span className="text-[11px] sm:text-xs font-semibold truncate">
+                    {row.label}
+                  </span>
+                </div>
+              )
+            })}
+            {/* Data rows: one per stock — each cell is a direct grid child */}
+            {stocks.flatMap((stock) => {
+              const isHighlight =
+                highlightSymbol &&
+                stock.symbol.toUpperCase() === highlightSymbol.toUpperCase()
+              const rowClass = isHighlight ? "bg-primary/5" : ""
+              return [
+                <div
+                  key={`${stock.symbol}-name`}
+                  className={cn(
+                    "px-3 py-2 sm:px-4 sm:py-2.5 border-r border-b border-border flex items-center gap-2",
+                    rowClass,
+                  )}
+                >
+                  <StockLogoAvatar stock={stock} />
+                  <Badge
+                    variant={isHighlight ? "default" : "outline"}
+                    className="text-[10px] px-1.5 py-0 uppercase"
+                  >
+                    {stock.symbol}
+                  </Badge>
+                </div>,
+                ...metricRows.map((row) => (
+                  <div
+                    key={`${stock.symbol}-${row.key}`}
+                    className={cn(
+                      "px-3 py-2 sm:px-4 sm:py-2.5 border-r border-b border-border last:border-r-0 flex items-center justify-end text-xs sm:text-sm tabular-nums",
+                      rowClass,
+                    )}
+                  >
+                    {row.render(stock)}
+                  </div>
+                )),
+              ]
+            })}
+          </div>
+        </div>
+      </Card>
+    )
+  }
 
   return (
     <Card className="mt-6 border-border/70 bg-background shadow-xl">

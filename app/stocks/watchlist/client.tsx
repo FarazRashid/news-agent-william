@@ -8,9 +8,11 @@ import {
   Plus,
   Trash2,
   Star,
-  Columns3,
   CheckSquare,
   Square,
+  ChevronRight,
+  BarChart3,
+  Building2,
 } from "lucide-react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -48,14 +50,6 @@ type WatchlistItem = {
   addedAt: Date
 }
 
-type WatchlistStockData = {
-  symbol: string
-  name: string
-  price: number
-  change: number
-  logoUrl?: string
-}
-
 const POPULAR_SYMBOLS: SymbolSuggestion[] = [
   { symbol: "AAPL", name: "Apple Inc." },
   { symbol: "MSFT", name: "Microsoft Corporation" },
@@ -66,62 +60,6 @@ const POPULAR_SYMBOLS: SymbolSuggestion[] = [
   { symbol: "META", name: "Meta Platforms Inc." },
   { symbol: "NFLX", name: "Netflix Inc." },
 ]
-
-// Mock function to get basic stock info - in production, use real API
-const getStockInfo = (symbol: string): { name: string; price: number; change: number; logoUrl?: string } => {
-  const mockData: Record<string, { name: string; price: number; change: number; logoUrl?: string }> = {
-    AAPL: { 
-      name: "Apple Inc.", 
-      price: 178.32, 
-      change: 2.45,
-      logoUrl: "https://logo.clearbit.com/apple.com"
-    },
-    MSFT: { 
-      name: "Microsoft Corporation", 
-      price: 412.76, 
-      change: -1.23,
-      logoUrl: "https://logo.clearbit.com/microsoft.com"
-    },
-    GOOGL: { 
-      name: "Alphabet Inc.", 
-      price: 142.89, 
-      change: 0.87,
-      logoUrl: "https://logo.clearbit.com/google.com"
-    },
-    AMZN: { 
-      name: "Amazon.com Inc.", 
-      price: 168.54, 
-      change: 3.21,
-      logoUrl: "https://logo.clearbit.com/amazon.com"
-    },
-    TSLA: { 
-      name: "Tesla Inc.", 
-      price: 248.92, 
-      change: -2.67,
-      logoUrl: "https://logo.clearbit.com/tesla.com"
-    },
-    NVDA: { 
-      name: "NVIDIA Corporation", 
-      price: 485.23, 
-      change: 5.43,
-      logoUrl: "https://logo.clearbit.com/nvidia.com"
-    },
-    META: { 
-      name: "Meta Platforms Inc.", 
-      price: 489.12, 
-      change: 1.98,
-      logoUrl: "https://logo.clearbit.com/meta.com"
-    },
-    NFLX: { 
-      name: "Netflix Inc.", 
-      price: 594.38, 
-      change: -0.54,
-      logoUrl: "https://logo.clearbit.com/netflix.com"
-    },
-  }
-
-  return mockData[symbol] || { name: symbol, price: 0, change: 0 }
-}
 
 const loadWatchlistFromSession = (): WatchlistItem[] => {
   return getWatchlist().map((item) => ({
@@ -134,7 +72,6 @@ export default function StockWatchlist() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [newSymbol, setNewSymbol] = useState("")
   const [isAdding, setIsAdding] = useState(false)
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [selectedForCompare, setSelectedForCompare] = useState<string[]>([])
   const [compareStocks, setCompareStocks] = useState<StockData[]>([])
   const [compareLoading, setCompareLoading] = useState(false)
@@ -145,11 +82,44 @@ export default function StockWatchlist() {
   const [filteredSymbolSuggestions, setFilteredSymbolSuggestions] = useState<
     SymbolSuggestion[]
   >([])
+  const [stockDataBySymbol, setStockDataBySymbol] = useState<
+    Record<string, StockData | null>
+  >({})
 
   // Load watchlist from session storage on mount
   useEffect(() => {
     setWatchlist(loadWatchlistFromSession())
   }, [])
+
+  // Fetch real stock data for all watchlist symbols
+  const watchlistSymbols = watchlist.map((w) => w.symbol).join(",")
+  useEffect(() => {
+    const symbols = watchlistSymbols ? watchlistSymbols.split(",") : []
+    if (symbols.length === 0) {
+      setStockDataBySymbol({})
+      return
+    }
+    let cancelled = false
+    const fetchAll = async () => {
+      const results = await Promise.allSettled(
+        symbols.map((symbol) => fetchStockData(symbol)),
+      )
+      if (cancelled) return
+      setStockDataBySymbol((prev) => {
+        const next = { ...prev }
+        results.forEach((result, i) => {
+          const sym = symbols[i]
+          if (result.status === "fulfilled") next[sym] = result.value
+          else next[sym] = null
+        })
+        return next
+      })
+    }
+    void fetchAll()
+    return () => {
+      cancelled = true
+    }
+  }, [watchlistSymbols])
 
   // Seed suggestions with popular symbols + anything in the user's watchlist
   useEffect(() => {
@@ -271,26 +241,6 @@ export default function StockWatchlist() {
               <h1 className="text-2xl fold:text-3xl ipad:text-4xl font-bold">My Watchlist</h1>
             </div>
             <div className="flex items-center gap-2">
-              <div className="flex rounded-md border border-border p-0.5">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={viewMode === "grid" ? "default" : "ghost"}
-                  className="px-3 text-xs"
-                  onClick={() => setViewMode("grid")}
-                >
-                  Grid
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant={viewMode === "list" ? "default" : "ghost"}
-                  className="px-3 text-xs"
-                  onClick={() => setViewMode("list")}
-                >
-                  List
-                </Button>
-              </div>
               <Button
                 onClick={() => setIsAdding(!isAdding)}
                 size="sm"
@@ -374,174 +324,62 @@ export default function StockWatchlist() {
               Add Your First Stock
             </Button>
           </Card>
-        ) : viewMode === "grid" ? (
-          <div className="grid grid-cols-1 fold:grid-cols-2 ipad:grid-cols-2 trifold:grid-cols-3 gap-4">
-            {watchlist.map(({ symbol }) => {
-              const info = getStockInfo(symbol)
-              const isPositive = info.change >= 0
-              const isSelected = selectedForCompare.includes(symbol)
-
-              return (
-                <Card key={symbol} className="p-4 fold:p-6 hover:shadow-lg transition-all">
-                  <div className="flex items-start justify-between mb-4 gap-3">
-                    <Link href={`/stocks/${symbol}`} className="flex items-start gap-3 flex-1 min-w-0">
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage
-                          src={info.logoUrl}
-                          alt={`${info.name} logo`}
-                        />
-                        <AvatarFallback className="text-xs font-semibold">
-                          {symbol.substring(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <h3 className="font-bold text-lg fold:text-xl hover:text-primary transition-colors">
-                          {symbol}
-                        </h3>
-                        <p className="text-sm text-muted-foreground truncate">
-                          {info.name}
-                        </p>
-                      </div>
-                    </Link>
-                    <Button
-                      variant={isSelected ? "default" : "outline"}
-                      size="xs"
-                      className="ml-2 gap-1 rounded-full px-2 py-1 text-[11px]"
-                      onClick={() => toggleSelected(symbol)}
-                    >
-                      <Columns3 className="h-3 w-3" />
-                      {isSelected ? "Selected" : "Compare"}
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 -mt-1 -mr-1"
-                        >
-                          <Trash2 className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remove from watchlist?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will remove {symbol} from your watchlist.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => removeStock(symbol)}>
-                            Remove
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl fold:text-3xl font-bold">
-                        ${info.price.toFixed(2)}
-                      </span>
-                    </div>
-                    <Badge
-                      variant={isPositive ? "default" : "destructive"}
-                      className="gap-1"
-                    >
-                      {isPositive ? (
-                        <TrendingUp className="h-3 w-3" />
-                      ) : (
-                        <TrendingDown className="h-3 w-3" />
-                      )}
-                      {isPositive ? "+" : ""}
-                      {info.change.toFixed(2)}%
-                    </Badge>
-                  </div>
-
-                  <Link href={`/stocks/${symbol}`}>
-                    <Button variant="outline" className="w-full mt-4" size="sm">
-                      View Details
-                    </Button>
-                  </Link>
-                </Card>
-              )
-            })}
-          </div>
         ) : (
-          <div className="space-y-3">
+          <div className="flex flex-wrap gap-3">
             {watchlist.map(({ symbol }) => {
-              const info = getStockInfo(symbol)
-              const isPositive = info.change >= 0
+              const stock = stockDataBySymbol[symbol]
               const isSelected = selectedForCompare.includes(symbol)
+              const isPositive = stock ? stock.changePercent >= 0 : false
+              const name = stock?.name ?? symbol
+              const price = stock?.price ?? 0
+              const changePercent = stock?.changePercent ?? 0
+              const logoUrl = stock?.logoUrl
+              const sector = stock?.sector
+              const isLoading = stock === undefined
 
               return (
-                <Card key={symbol} className="p-3 fold:p-4 hover:shadow-md transition-all">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <Avatar className="h-10 w-10 shrink-0">
-                        <AvatarImage
-                          src={info.logoUrl}
-                          alt={`${info.name} logo`}
-                        />
-                        <AvatarFallback className="text-xs font-semibold">
-                          {symbol.substring(0, 2)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <Link href={`/stocks/${symbol}`} className="min-w-0">
-                        <div className="flex items-baseline gap-2">
-                          <h3 className="font-semibold text-base fold:text-lg hover:text-primary transition-colors">
-                            {symbol}
-                          </h3>
+                <Card
+                  key={symbol}
+                  className="w-[160px] sm:w-[180px] shrink-0 p-3 hover:shadow-md transition-all group"
+                >
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-start justify-between gap-1">
+                      <Link
+                        href={`/stocks/${symbol}`}
+                        className="flex items-center gap-2 min-w-0 flex-1"
+                      >
+                        <Avatar className="h-9 w-9 shrink-0 ring-1 ring-border/50">
+                          <AvatarImage
+                            src={logoUrl}
+                            alt={`${name} logo`}
+                            className="object-cover"
+                          />
+                          <AvatarFallback className="text-[10px] font-semibold bg-muted">
+                            {symbol.substring(0, 2)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1">
+                            <p className="font-semibold text-sm truncate hover:text-primary transition-colors">
+                              {symbol}
+                            </p>
+                            {sector ? (
+                              <Building2 className="h-3 w-3 shrink-0 text-muted-foreground" aria-hidden />
+                            ) : null}
+                          </div>
+                          <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                            {isLoading ? "Loading…" : name}
+                          </p>
                         </div>
-                        <p className="text-xs fold:text-sm text-muted-foreground truncate">
-                          {info.name}
-                        </p>
                       </Link>
-                      <div className="hidden fold:flex flex-col items-start gap-1">
-                        <span className="text-base fold:text-lg font-semibold">
-                          ${info.price.toFixed(2)}
-                        </span>
-                        <Badge
-                          variant={isPositive ? "default" : "destructive"}
-                          className="gap-1"
-                        >
-                          {isPositive ? (
-                            <TrendingUp className="h-3 w-3" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3" />
-                          )}
-                          {isPositive ? "+" : ""}
-                          {info.change.toFixed(2)}%
-                        </Badge>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="flex flex-col items-end gap-1 fold:hidden">
-                        <span className="text-sm font-semibold">
-                          ${info.price.toFixed(2)}
-                        </span>
-                        <Badge
-                          variant={isPositive ? "default" : "destructive"}
-                          className="gap-1"
-                        >
-                          {isPositive ? (
-                            <TrendingUp className="h-3 w-3" />
-                          ) : (
-                            <TrendingDown className="h-3 w-3" />
-                          )}
-                          {isPositive ? "+" : ""}
-                          {info.change.toFixed(2)}%
-                        </Badge>
-                      </div>
                       <AlertDialog>
                         <AlertDialogTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="h-8 w-8"
+                            className="h-7 w-7 shrink-0 opacity-70 group-hover:opacity-100"
                           >
-                            <Trash2 className="h-4 w-4 text-muted-foreground" />
+                            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -559,20 +397,38 @@ export default function StockWatchlist() {
                           </AlertDialogFooter>
                         </AlertDialogContent>
                       </AlertDialog>
-                      <Link href={`/stocks/${symbol}`}>
-                        <Button variant="outline" size="sm">
-                          View
-                        </Button>
-                      </Link>
+                    </div>
+                    <div className="flex items-baseline justify-between gap-1">
+                      <span className="text-base font-bold tabular-nums">
+                        {isLoading ? "—" : `$${price.toFixed(2)}`}
+                      </span>
+                      <Badge
+                        variant={isPositive ? "default" : "destructive"}
+                        className="gap-0.5 text-[10px] px-1.5 py-0"
+                      >
+                        {isPositive ? (
+                          <TrendingUp className="h-2.5 w-2.5" />
+                        ) : (
+                          <TrendingDown className="h-2.5 w-2.5" />
+                        )}
+                        {isLoading ? "—" : `${isPositive ? "+" : ""}${changePercent.toFixed(2)}%`}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1.5 pt-1 border-t border-border/60">
                       <Button
                         variant={isSelected ? "default" : "outline"}
                         size="sm"
-                        className="ml-1 gap-1 rounded-full px-2 py-1 text-xs"
+                        className="h-7 flex-1 gap-1 text-[10px] px-2"
                         onClick={() => toggleSelected(symbol)}
                       >
-                        <Columns3 className="h-3 w-3" />
-                        {isSelected ? "Selected" : "Compare"}
+                        <BarChart3 className="h-3 w-3" />
+                        {isSelected ? "In" : "Compare"}
                       </Button>
+                      <Link href={`/stocks/${symbol}`} className="shrink-0">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                          <ChevronRight className="h-4 w-4" />
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </Card>
