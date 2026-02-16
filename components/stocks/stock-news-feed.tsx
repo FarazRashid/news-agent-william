@@ -22,6 +22,8 @@ interface StockNewsFeedProps {
   limit?: number
   /** Optional timestamp (ms) for the point currently hovered on the price chart */
   hoveredTimestamp?: number | null
+  /** Number of days back to fetch news for (default: 30) */
+  daysBack?: number
 }
 
 export function StockNewsFeed({

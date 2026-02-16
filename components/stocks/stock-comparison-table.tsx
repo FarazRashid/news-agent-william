@@ -1,9 +1,11 @@
- "use client"
+"use client"
 
+import { useState } from "react"
 import type { ElementType } from "react"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { Card } from "@/components/ui/card"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
   Activity,
   BarChart3,
@@ -20,6 +22,47 @@ interface StockComparisonTableProps {
   stocks: StockData[]
   title?: string
   highlightSymbol?: string
+  /** "horizontal" = metrics as columns, stocks as rows (flows right, less vertical space) */
+  layout?: "vertical" | "horizontal"
+}
+
+function StockLogoAvatar({ stock }: { stock: StockData }) {
+  const [imageLoading, setImageLoading] = useState(true)
+  const [imageError, setImageError] = useState(false)
+
+  if (!stock.logoUrl || imageError) {
+    return (
+      <div className="h-10 w-10 shrink-0 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
+        {stock.symbol.substring(0, 2)}
+      </div>
+    )
+  }
+
+  return (
+    <div className="relative h-10 w-10 shrink-0">
+      {imageLoading && (
+        <div className="absolute inset-0 rounded-full bg-muted animate-pulse" />
+      )}
+      <Avatar className="h-10 w-10">
+        <AvatarImage
+          src={stock.logoUrl}
+          alt={`${stock.name} logo`}
+          onLoad={() => setImageLoading(false)}
+          onError={() => {
+            setImageLoading(false)
+            setImageError(true)
+          }}
+          className={cn(
+            "transition-opacity duration-200",
+            imageLoading ? "opacity-0" : "opacity-100"
+          )}
+        />
+        <AvatarFallback className="text-xs font-semibold">
+          {stock.symbol.substring(0, 2)}
+        </AvatarFallback>
+      </Avatar>
+    </div>
+  )
 }
 
 const formatNumber = (value: number | undefined, options?: Intl.NumberFormatOptions) => {
@@ -69,6 +112,7 @@ export function StockComparisonTable({
   stocks,
   title = "Stock Comparison",
   highlightSymbol,
+  layout = "vertical",
 }: Readonly<StockComparisonTableProps>) {
   if (!stocks.length) return null
 
@@ -194,8 +238,92 @@ export function StockComparisonTable({
     },
   ]
 
+  if (layout === "horizontal") {
+    return (
+      <Card className="mt-4 border-border/70 bg-background shadow-xl">
+        <div className="px-3 py-2 sm:px-4 sm:py-3 border-b border-border/60 flex items-center justify-between gap-2">
+          <h2 className="text-sm sm:text-base font-bold tracking-tight truncate">
+            {title}
+          </h2>
+          <Badge variant="outline" className="text-xs shrink-0">
+            {stocks.length} stocks
+          </Badge>
+        </div>
+        <div className="w-full overflow-x-auto overflow-y-hidden">
+          <div
+            className="min-w-max grid w-max"
+            style={{
+              gridTemplateColumns: `140px repeat(${metricRows.length}, 140px)`,
+            }}
+          >
+            {/* Header row: Stock | Metric1 | Metric2 | ... */}
+            <div className="px-3 py-2 sm:px-4 sm:py-2.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-r border-b border-border bg-muted/40">
+              Stock
+            </div>
+            {metricRows.map((row) => {
+              const Icon = row.icon
+              return (
+                <div
+                  key={`h-${row.key}`}
+                  className="px-3 py-2 sm:px-4 sm:py-2.5 border-r border-b border-border last:border-r-0 flex items-center gap-2 bg-muted/40"
+                >
+                  <div
+                    className={cn(
+                      "flex h-6 w-6 shrink-0 items-center justify-center rounded",
+                      row.accentClass,
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                  </div>
+                  <span className="text-[11px] sm:text-xs font-semibold truncate">
+                    {row.label}
+                  </span>
+                </div>
+              )
+            })}
+            {/* Data rows: one per stock — each cell is a direct grid child */}
+            {stocks.flatMap((stock) => {
+              const isHighlight =
+                highlightSymbol &&
+                stock.symbol.toUpperCase() === highlightSymbol.toUpperCase()
+              const rowClass = isHighlight ? "bg-primary/5" : ""
+              return [
+                <div
+                  key={`${stock.symbol}-name`}
+                  className={cn(
+                    "px-3 py-2 sm:px-4 sm:py-2.5 border-r border-b border-border flex items-center gap-2",
+                    rowClass,
+                  )}
+                >
+                  <StockLogoAvatar stock={stock} />
+                  <Badge
+                    variant={isHighlight ? "default" : "outline"}
+                    className="text-[10px] px-1.5 py-0 uppercase"
+                  >
+                    {stock.symbol}
+                  </Badge>
+                </div>,
+                ...metricRows.map((row) => (
+                  <div
+                    key={`${stock.symbol}-${row.key}`}
+                    className={cn(
+                      "px-3 py-2 sm:px-4 sm:py-2.5 border-r border-b border-border last:border-r-0 flex items-center justify-end text-xs sm:text-sm tabular-nums",
+                      rowClass,
+                    )}
+                  >
+                    {row.render(stock)}
+                  </div>
+                )),
+              ]
+            })}
+          </div>
+        </div>
+      </Card>
+    )
+  }
+
   return (
-    <Card className="mt-6 border-border/70 bg-gradient-to-b from-background via-background/95 to-background/90 shadow-xl">
+    <Card className="mt-6 border-border/70 bg-background shadow-xl">
       <div className="px-4 pt-4 pb-3 sm:px-6 sm:pt-5 sm:pb-4 border-b border-border/60 flex items-center justify-between gap-3">
         <div>
           <h2 className="text-lg sm:text-xl font-bold tracking-tight">
@@ -213,9 +341,9 @@ export function StockComparisonTable({
 
       <ScrollArea className="w-full">
         <div className="min-w-[640px]">
-          <div className="grid grid-cols-[minmax(180px,240px)_repeat(auto-fit,minmax(160px,1fr))]">
-            <div className="sticky left-0 z-20 border-r border-border/60 bg-gradient-to-r from-background via-background/98 to-background/95 backdrop-blur-sm">
-              <div className="px-4 py-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60">
+          <div className="grid grid-cols-[minmax(220px,260px)_repeat(auto-fit,minmax(180px,1fr))]">
+            <div className="sticky left-0 z-20 border-r border-border bg-background backdrop-blur-sm">
+              <div className="h-[72px] px-4 flex items-center text-xs font-semibold uppercase tracking-wider text-muted-foreground border-b border-border">
                 Metric
               </div>
               {metricRows.map((row) => {
@@ -223,26 +351,19 @@ export function StockComparisonTable({
                 return (
                   <div
                     key={row.key}
-                    className="px-4 py-3 border-b border-border/40 bg-gradient-to-r from-background via-background/98 to-background/95"
+                    className="h-[52px] px-4 border-b border-border flex items-center gap-3"
                   >
-                    <div className="flex items-center gap-2">
-                      <div
-                        className={cn(
-                          "flex h-6 w-6 items-center justify-center rounded-md",
-                          row.accentClass,
-                        )}
-                      >
-                        <Icon className="h-3 w-3" />
-                      </div>
-                      <div className="text-xs font-semibold tracking-wide">
-                        {row.label}
-                      </div>
+                    <div
+                      className={cn(
+                        "flex h-7 w-7 items-center justify-center rounded-md shrink-0",
+                        row.accentClass,
+                      )}
+                    >
+                      <Icon className="h-3 w-3" />
                     </div>
-                    {row.description && (
-                      <div className="mt-1 text-[11px] text-muted-foreground leading-snug">
-                        {row.description}
-                      </div>
-                    )}
+                    <div className="text-xs font-semibold tracking-wide leading-tight">
+                      {row.label}
+                    </div>
                   </div>
                 )
               })}
@@ -259,17 +380,20 @@ export function StockComparisonTable({
                 <div
                   key={stock.symbol}
                   className={cn(
-                    "border-l border-border/40 bg-gradient-to-b from-background/80 via-background/60 to-background/50",
-                    isHighlight &&
-                      "from-primary/10 via-primary/5 to-background/70 border-primary/40",
+                    "border-l border-border bg-background",
+                    isHighlight && "border-primary/60 bg-primary/5",
                   )}
                 >
-                  <div className="px-4 py-3 border-b border-border/60 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold truncate">
+                  <div className="h-[72px] px-4 border-b border-border flex items-center gap-3">
+                    <StockLogoAvatar stock={stock} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Badge
+                          variant={isHighlight ? "default" : "outline"}
+                          className="text-[11px] px-2 py-0.5 uppercase tracking-wide"
+                        >
                           {stock.symbol}
-                        </span>
+                        </Badge>
                         {isHighlight && (
                           <Badge
                             variant="secondary"
@@ -283,28 +407,12 @@ export function StockComparisonTable({
                         {stock.name}
                       </div>
                     </div>
-                    <div className="text-right">
-                      <div className="text-sm font-semibold tabular-nums">
-                        {formatCurrency(stock.price)}
-                      </div>
-                      <div
-                        className={cn(
-                          "text-[11px] tabular-nums",
-                          changePositive
-                            ? "text-green-600 dark:text-green-400"
-                            : "text-red-600 dark:text-red-400",
-                        )}
-                      >
-                        {formatPercent(stock.changePercent)} (
-                        {formatCurrency(stock.change)})
-                      </div>
-                    </div>
                   </div>
 
                   {metricRows.map((row) => (
                     <div
                       key={row.key}
-                      className="px-4 py-3 border-b border-border/30 text-sm tabular-nums"
+                      className="h-[52px] px-4 border-b border-border flex items-center justify-end text-sm tabular-nums"
                     >
                       {row.render(stock)}
                     </div>

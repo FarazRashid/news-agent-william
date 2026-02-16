@@ -61,7 +61,7 @@ export function ExplorePage() {
                     .from("articles")
                     .select("secondary_topics")
                     .order("published_at", { ascending: false })
-                    .limit(20) // Reduced from 50 to 20 for better performance
+                    .limit(80) // Enough articles to get meaningful top-5 topic counts
 
                 if (error) throw error
 
@@ -130,10 +130,11 @@ export function ExplorePage() {
             return acc
         }, {} as Record<string, number>)
 
+        // Top 5 topics by number of articles (most articles first)
         return Object.entries(topicCounts)
             .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
             .map(([topic]) => topic)
-            .slice(0, 20)
     }, [articles])
 
     const handleSearch = (e: React.FormEvent) => {
@@ -177,13 +178,13 @@ export function ExplorePage() {
 
                     {loading ? (
                         <div className="flex flex-wrap gap-2">
-                            {Array.from({ length: 15 }).map((_, idx) => (
+                            {Array.from({ length: 5 }).map((_, idx) => (
                                 <Skeleton key={idx} className="h-8 fold:h-9 w-20 fold:w-24 rounded-full" />
                             ))}
                         </div>
                     ) : (
                         <div className="flex flex-wrap gap-2">
-                            {trendingTopics.slice(0, 20).map((topic, idx) => (
+                            {trendingTopics.map((topic, idx) => (
                                 <Link key={idx} href={`/feed?primaryTopics=${encodeURIComponent(topic)}`}>
                                     <Badge
                                         variant="secondary"
